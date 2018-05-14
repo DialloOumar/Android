@@ -28,9 +28,9 @@ public interface MapActivityMVP {
         void moveCameraToLocation(LatLng location);
         void drawMarkers(List<MarkerOptions> markerOptions);
         void switchFragment(Fragment fromFragment, String toFragment, Bundle bundle);
-        void showCloseStops(CloseStops stops);
+        void saveCloseStops(CloseStops stops);
         void clearMap();
-        void showErrorGettingCloseStops();
+        void showNoRouteDialogue(String message);
         void stopProgressBar();
         void startProgressBar(String message);
         void changeMapPadding(int padding);
@@ -56,16 +56,18 @@ public interface MapActivityMVP {
         Boolean getRequestingLocationUpdates();
         Location getCurrentLocation();
         String getLastUpdateTime();
-        void getClosestStops(Double destinationLat, Double destinationLng);
+        void saveDestination(double lat, double lng);
+        void getClosestStops();
         void provideRoutes(List<List<Route>> routes, List<Stop> stops);
         void getDirection(String origin, String destination);
         void provideClosestStops(CloseStops stops);
+        void notifyNoRouteFound(int status);
 
     }
 
     interface Model {
 
-        void requestClosestBuses(String origin, String destination);
+        void requestClosestBuses(String origin);
         void requestDirectionApi(String origin, String destination);
 
     }
