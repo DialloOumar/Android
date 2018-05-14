@@ -46,6 +46,7 @@ import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Route;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Step;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Stop;
 import com.oumardiallo636.gtuc.troskymate.R;
+import com.oumardiallo636.gtuc.troskymate.Utility.MyStatus;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -143,27 +144,22 @@ public class Presenter extends BaseActivity implements
     }
 
     @Override
-    public void getClosestStops(Double destinationLat, Double destinationLng) {
+    public void saveDestination(double lat, double lng) {
+        mDestination = new LatLng(lat,lng);
+    }
 
-        mDestination = new LatLng(destinationLat,destinationLng);
+    /**
+     * From the user's current location get 4 nearby bus stop that can serve as a starting point
+     */
+    @Override
+    public void getClosestStops() {
 
         String origin = new StringBuilder().append(mCurrentLocation.getLatitude())
                 .append(',')
                 .append(mCurrentLocation.getLongitude())
                 .toString();
 
-        String  destination = new StringBuilder().append(destinationLat)
-                .append(',')
-                .append(destinationLng)
-                .toString();
-
-        Log.d(TAG, "getClosestStops: destination === "+destination);
-        Log.d(TAG, "getClosestStops: origin === "+origin);
-
-        if( destinationLat != null && destination != null){
-            //mModel.requestDirectionApi(origin, destination);
-            mModel.requestClosestBuses(origin,destination);
-        }
+            mModel.requestClosestBuses(origin);
     }
 
     @Override
@@ -176,7 +172,7 @@ public class Presenter extends BaseActivity implements
     public void provideRoutes(List<List<Route>> routes, List<Stop> stops) {
         Log.d(TAG, "provideRoutes: starts");
 
-        List<List<String>> polylineList = new ArrayList<>();
+//        List<List<String>> polylineList = new ArrayList<>();
         List<MarkerOptions> markers = new ArrayList<>();
         List<PolylineOptions> dotedPolylines = new ArrayList<>();
 
@@ -243,7 +239,25 @@ public class Presenter extends BaseActivity implements
      */
     @Override
     public void provideClosestStops(CloseStops stops) {
-        mView.showCloseStops(stops);
+        mView.saveCloseStops(stops);
+    }
+
+    @Override
+    public void notifyNoRouteFound(int status) {
+
+        switch (status){
+            case MyStatus.NO_ROUTE_FOUND:
+                mView.showNoRouteDialogue("Sorry, the destination you entered is not yet supported");
+                mView.clearMap();
+                break;
+            case MyStatus.SERVER_ERROR:
+                mView.showNoRouteDialogue("Sorry, the destination you entered is not yet supported");
+                mView.clearMap();
+                break;
+            case MyStatus.TIME_OUT:
+                mView.showNoRouteDialogue("Internet connection time out try again!");
+        }
+
     }
 
     /**
@@ -340,11 +354,16 @@ public class Presenter extends BaseActivity implements
 
     /**
      * creating an intent to receive places autocompletion from google places api
+     * This function also call the getClosestStops for getting the nearby stops as soon as the user start looking
+     * for a destination, and save those stop before the destination result arrives
      */
     @Override
     public void findDestination() {
 
         Log.d(TAG, "findDestination: starts");
+
+        getClosestStops();
+
         try {
             AutocompleteFilter typeFilter = new AutocompleteFilter.Builder()
                     .setCountry("GH")

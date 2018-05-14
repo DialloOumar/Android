@@ -5,6 +5,7 @@ import android.util.Log;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.TroskyDirection;
 import com.oumardiallo636.gtuc.troskymate.Utility.HttpCaller;
+import com.oumardiallo636.gtuc.troskymate.Utility.MyStatus;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -41,10 +42,9 @@ public class MapModel implements MapActivityMVP.Model {
      * the method passes the returned data to the presenter
      *
      * @param origin The current position of the user.
-     * @param destination where to user is heading
      */
     @Override
-    public void requestClosestBuses(String origin, String destination) {
+    public void requestClosestBuses(String origin) {
         Log.d(TAG, "requestClosestBuses: starts");
         String baseUrl =ApplicationRepo.TroskyRepo.baseUrl;
 
@@ -110,18 +110,32 @@ public class MapModel implements MapActivityMVP.Model {
             public void onResponse(Call<TroskyDirection> call, Response<TroskyDirection> response) {
 
                 Log.d(TAG, "onResponse: url == "+ call.request().url());
-                TroskyDirection troskyDirection = response.body();
-                Log.d(TAG, "onResponse: message "+ troskyDirection.getMessage());
+                Log.d(TAG, "onResponse: "+response.message());
 
-                if (troskyDirection.getStatus() == 202){
-                    presenter.provideRoutes(troskyDirection.getRoutes(),
-                            troskyDirection.getStops());
+                if (response.isSuccessful()){
+                    TroskyDirection troskyDirection = response.body();
+                    Log.d(TAG, "onResponse: message "+ troskyDirection.getMessage());
+
+                    if (troskyDirection.getStatus() == MyStatus.OK){
+                        presenter.provideRoutes(troskyDirection.getRoutes(),
+                                troskyDirection.getStops());
+                    }else if (troskyDirection.getStatus() == MyStatus.NO_ROUTE_FOUND){
+                        presenter.notifyNoRouteFound(404);
+                    }
+                } else {
+                    Log.d(TAG, "onResponse: "+ response.message());
+                    presenter.notifyNoRouteFound(505);
+                    Log.d(TAG, "onResponse: unavailable");
                 }
+
             }
 
             @Override
             public void onFailure(Call<TroskyDirection> call, Throwable t) {
-                Log.d(TAG, "onFailure: "+call.request().url());
+                Log.d(TAG, "onFailure: "+call.request());
+                Log.d(TAG, "onFailure: "+t.getMessage());
+
+                presenter.notifyNoRouteFound(405);
             }
         });
 

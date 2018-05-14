@@ -94,6 +94,9 @@ public class MainActivity extends BaseActivity implements
     private List<Polyline> mDotedPolylines = new ArrayList<>();
     private Queue<Integer> color = new LinkedList<>();
 
+    private ArrayList<String> closeStopNameList;
+    private ArrayList<String> closeStoplocationList;
+
 
     private String destinationName;
     private Fragment mCurrentFragment;
@@ -453,34 +456,36 @@ public class MainActivity extends BaseActivity implements
      * Callback received when a list of close bus stops have been returned.
      */
     @Override
-    public void showCloseStops(CloseStops stops) {
+    public void saveCloseStops(CloseStops stops) {
 
-        Bundle bundle = new Bundle();
-
-        ArrayList<String> names = new ArrayList<>();
-        ArrayList<String> locations = new ArrayList<>();
+         closeStopNameList = new ArrayList<>();
+         closeStoplocationList = new ArrayList<>();
 
         List<BusStop> busStops = stops.getBusStop();
         if (busStops.size() > 0) {
 
             for (BusStop stop : busStops) {
-                locations.add(stop.getStopLocation());
-                names.add(stop.getStopName());
+                closeStopNameList.add(stop.getStopName());
+                closeStoplocationList.add(stop.getStopLocation());
             }
 
         }
-
-        bundle.putStringArrayList("stop_names", names);
-        bundle.putStringArrayList("stop_location", locations);
-
-        switchFragment(null,MyFragmentList.SHOW_DIRECTION, bundle);
-
+//
 //        mBusStopsFragment.displayCloseStops(stops,this);
 
     }
 
     @Override
-    public void showErrorGettingCloseStops() {
+    public void showNoRouteDialogue(String message) {
+
+        stopProgressBar();
+
+        Snackbar.make(
+                findViewById(android.R.id.content),
+                message,
+                Snackbar.LENGTH_LONG)
+                .show();
+
     }
 
     @Override
@@ -511,9 +516,9 @@ public class MainActivity extends BaseActivity implements
                     double destinationLat = place.getLatLng().latitude;
                     double destinationLng = place.getLatLng().longitude;
 
-                    presenter.getClosestStops(destinationLat, destinationLng);
+                    presenter.saveDestination(destinationLat, destinationLng);
+                    showClosestStops();
 
-                    startProgressBar("Loading");
                 } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                     Status status = PlaceAutocomplete.getStatus(this, data);
                     // TODO: Handle the error.
@@ -525,6 +530,15 @@ public class MainActivity extends BaseActivity implements
         }
     }
 
+
+
+    private void showClosestStops(){
+        Bundle bundle = new Bundle();
+
+        bundle.putStringArrayList("stop_names", closeStopNameList);
+        bundle.putStringArrayList("stop_location", closeStoplocationList);
+        switchFragment(null,MyFragmentList.SHOW_DIRECTION, bundle);
+    }
 
     @Override
     public void changeMapPadding(int padding){

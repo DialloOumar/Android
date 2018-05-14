@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.oumardiallo636.gtuc.troskymate.R;
 
@@ -102,19 +101,19 @@ public class ShowDirection extends Fragment {
         switch (radioCheckedId) {
             case R.id.stop_one:
                 origin = stop_locations.get(0);
-                Toast.makeText(getContext(),"location 1 "+stop_locations.get(0),Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getContext(),"location 1 "+stop_locations.get(0),Toast.LENGTH_SHORT).show();
                 break;
             case R.id.stop_two:
                 origin = stop_locations.get(1);
-                Toast.makeText(getContext(),"location 2 "+stop_locations.get(1),Toast.LENGTH_SHORT).show();
+               // Toast.makeText(getContext(),"location 2 "+stop_locations.get(1),Toast.LENGTH_SHORT).show();
                 break;
             case R.id.stop_three:
                 origin = stop_locations.get(2);
-                Toast.makeText(getContext(),"location 3 "+stop_locations.get(2),Toast.LENGTH_SHORT).show();
+               // Toast.makeText(getContext(),"location 3 "+stop_locations.get(2),Toast.LENGTH_SHORT).show();
                 break;
             case R.id.stop_four:
                 origin = stop_locations.get(3);
-                Toast.makeText(getContext(),"location 4 "+stop_locations.get(3),Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getContext(),"location 4 "+stop_locations.get(3),Toast.LENGTH_SHORT).show();
                 break;
         }
 
