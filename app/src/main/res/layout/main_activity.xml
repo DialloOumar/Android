@@ -1,14 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<RelativeLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
     tools:context=".Map.MainActivity">
 
-    <include layout="@layout/activity_navigation"/>
+    <!--<android.support.design.widget.AppBarLayout-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:theme="@style/AppTheme.NoActionBar.AppBarOverlay">-->
 
-</RelativeLayout>
+        <!--<android.support.v7.widget.Toolbar-->
+            <!--android:id="@+id/toolbar"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="?attr/actionBarSize"-->
+            <!--android:background="@color/colorPrimary"-->
+            <!--app:popupTheme="@style/AppTheme.NoActionBar.PopupOverlay">-->
+
+            <!--<TextView-->
+                <!--android:id="@+id/tv_search"-->
+                <!--android:layout_width="match_parent"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:layout_marginEnd="16dp"-->
+                <!--android:layout_marginRight="16dp"-->
+                <!--android:layout_weight="1"-->
+                <!--android:background="@drawable/rounded_border_search"-->
+                <!--android:drawableLeft="@drawable/places_ic_search"-->
+                <!--android:onClick="searchPlace"-->
+                <!--android:padding="5dp"-->
+                <!--android:text="Search" />-->
+
+        <!--</android.support.v7.widget.Toolbar>-->
+
+    <!--</android.support.design.widget.AppBarLayout>-->
+
+    <include layout="@layout/content_navigation" />
+
+
+</android.support.design.widget.CoordinatorLayout>

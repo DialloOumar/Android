@@ -67,6 +67,9 @@ public class MapModel implements MapActivityMVP.Model {
                 Log.d(TAG, "onResponse: message "+closeStops.getMessage());
                 if (closeStops.getStatus() == 202){
                     presenter.provideClosestStops(closeStops);
+                }else if (closeStops.getStatus() == MyStatus.NO_ROUTE_FOUND){
+                    Log.d(TAG, "onResponse: in"+closeStops.getMessage());
+
                 }
             }
 

@@ -7,6 +7,7 @@ package com.oumardiallo636.gtuc.troskymate.Map;
 import android.Manifest;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -14,20 +15,24 @@ import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
 import android.util.Log;
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewSwitcher;
 
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingClient;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -45,6 +50,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.maps.android.PolyUtil;
 import com.oumardiallo636.gtuc.troskymate.Animation.MapAnimator;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.BusStop;
@@ -60,6 +67,7 @@ import java.util.Queue;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 /**
  * Using location settings.
@@ -78,8 +86,7 @@ import butterknife.ButterKnife;
 
 public class MainActivity extends BaseActivity implements
         OnMapReadyCallback,
-        MapActivityMVP.View,
-        NavigationView.OnNavigationItemSelectedListener {
+        MapActivityMVP.View {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static MapActivityMVP.View mView;
@@ -99,27 +106,89 @@ public class MainActivity extends BaseActivity implements
 
 
     private String destinationName;
-    private Fragment mCurrentFragment;
+    private Fragment mCurrentBottomFragment;
+    private Fragment mCurrentHeaderFragment;
+
     private int mMapPadding;
 
+    private GeofencingClient mGeofencingClient;
+    private ArrayList<Geofence> mGeofenceList;
+    private PendingIntent mGeofencePendingIntent;
+
     ProgressDialog mDialog;
-
-
-    @BindView(R.id.fab)
-    FloatingActionButton fab;
-
-    @BindView(R.id.tv_search)
-    TextView tvSearch;
 
     /**
      * Get reference to the presenter which contain the business logic of the app
      **/
     Presenter presenter;
 
+    @BindView(R.id.stop_one)
+    RadioButton stop1;
 
-    public static MapActivityMVP.View getInstance(){
+    @BindView(R.id.stop_two)
+    RadioButton stop2;
+
+    @BindView(R.id.stop_three)
+    RadioButton stop3;
+
+    @BindView(R.id.stop_four)
+    RadioButton stop4;
+
+    @BindView(R.id.radioGroup)
+    RadioGroup radioGroup;
+
+    @BindView(R.id.tv_cancel)
+    TextView cancel;
+
+    @BindView(R.id.tv_select_origin)
+    TextView select_origin;
+
+    @BindView(R.id.btn_show_direction)
+    Button btnshowDirection;
+
+    @BindView(R.id.tv_search)
+    TextView search;
+
+    @OnClick(R.id.tv_cancel)
+    public void cancelClick() {
+        clearMap();
+    }
+
+    @OnClick(R.id.btn_show_direction)
+    public void submit(View view) {
+        // TODO submit data to server...
+
+        int radioCheckedId = radioGroup.getCheckedRadioButtonId();
+
+        String origin = "";
+
+        switch (radioCheckedId) {
+            case R.id.stop_one:
+                origin = closeStoplocationList.get(0);
+                //Toast.makeText(getContext(),"location 1 "+stop_locations.get(0),Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.stop_two:
+                origin = closeStoplocationList.get(1);
+                // Toast.makeText(getContext(),"location 2 "+stop_locations.get(1),Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.stop_three:
+                origin = closeStoplocationList.get(2);
+                // Toast.makeText(getContext(),"location 3 "+stop_locations.get(2),Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.stop_four:
+                origin = closeStoplocationList.get(3);
+                //Toast.makeText(getContext(),"location 4 "+stop_locations.get(3),Toast.LENGTH_SHORT).show();
+                break;
+        }
+
+        searchDirection(origin);
+        startProgressBar("Loading direction");
+    }
+
+    public static MapActivityMVP.View getInstance() {
         return mView;
     }
+
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -130,10 +199,10 @@ public class MainActivity extends BaseActivity implements
         color.add(Color.RED);
         color.add(Color.BLACK);
 
-        ButterKnife.bind(this);
+//        ButterKnife.bind(this);
         mView = this;
 
-        activateToolbar(true);
+//        activateToolbar(false);
 
         Log.d(TAG, "onCreate: starts");
 
@@ -155,17 +224,96 @@ public class MainActivity extends BaseActivity implements
 
         Log.d(TAG, "onCreate: ends");
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, getToolbar(), R.string.navigation_drawer_open, R.string.navigation_drawer_close);
-        drawer.addDrawerListener(toggle);
-        toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(this);
+        CustomToolBar customToolBar = new CustomToolBar();
+        mCurrentHeaderFragment = customToolBar;
 
-        mDialog= new ProgressDialog(this);
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.container_header_layout, customToolBar)
+                .commitAllowingStateLoss();
 
+        mDialog = new ProgressDialog(this);
+        mGeofencingClient = LocationServices.getGeofencingClient(this);
+        mGeofenceList = new ArrayList<>();
+
+        mGeofenceList.add(new Geofence.Builder()
+                // Set the request ID of the geofence. This is a string to identify this
+                // geofence.
+                .setRequestId("geofence1")
+                .setCircularRegion(
+                        5.603153,
+                        -0.235881,
+                        50
+                )
+                .setExpirationDuration(60000)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                        Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build());
+
+
+
+
+    }
+
+    /**
+     * The following Method uses the GeofencingRequest class and its nested
+     * GeofencingRequestBuilder class to specify the geofences to monitor and to
+     * set how related geofence events are triggered:
+     * @return
+     */
+
+    private GeofencingRequest getGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+        builder.addGeofences(mGeofenceList);
+        return builder.build();
+    }
+
+    private void startGeofences(){
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mGeofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent())
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        // Geofences added
+                        // ...
+
+                        Toast.makeText(MainActivity.this, "geo added correctly",Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Failed to add geofences
+                        // ...
+
+                        Toast.makeText(MainActivity.this, "geo added correctly",Toast.LENGTH_LONG);
+                    }
+                });
+    }
+
+
+    private PendingIntent getGeofencePendingIntent() {
+        // Reuse the PendingIntent if we already have it.
+        if (mGeofencePendingIntent != null) {
+            return mGeofencePendingIntent;
+        }
+        Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
+        // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when
+        // calling addGeofences() and removeGeofences().
+        mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.
+                FLAG_UPDATE_CURRENT);
+        return mGeofencePendingIntent;
     }
 
     @Override
@@ -200,6 +348,8 @@ public class MainActivity extends BaseActivity implements
         UiSettings uiSettings = googleMap.getUiSettings();
         uiSettings.setZoomControlsEnabled(true);
 
+        mMap.setPadding(0, 108, 0, 0);
+
     }
 
 //    @OnClick(R.id.btn_show_direction)
@@ -230,15 +380,15 @@ public class MainActivity extends BaseActivity implements
 //        mMaker.remove();
 //    }
 
-
-    public void searchDirection(String origin){
+    public void searchDirection(String origin) {
 
         String destination = presenter.getStringDestination();
 
         presenter.getDirection(origin, destination.toString());
     }
+
     /**
-     *This method is called when user clicks on toolbar's search field .
+     * This method is called when user clicks on toolbar's search field .
      */
     @Override
     public void searchPlace(View view) {
@@ -248,11 +398,21 @@ public class MainActivity extends BaseActivity implements
         presenter.findDestination();
     }
 
-    public void clearMap(){
+    public void clearMap() {
         mMap.clear();
-        hideFragment();
-        tvSearch.setText("Search");
-        changeMapPadding(0);
+        hideBottomFragment();
+
+        if (!(mCurrentHeaderFragment instanceof CustomToolBar)) {
+            switchHeaderFragment(MyFragmentList.CUSTOM_TOOLBAR, null);
+            search.setText(null);
+            search.setHint("Where to ?");
+        }
+
+        if (search != null) {
+            search.setText(null);
+        }
+
+        changeMapBottomPadding(0);
     }
 
     /**
@@ -271,7 +431,7 @@ public class MainActivity extends BaseActivity implements
                 mCameraOnLocation = false;
             }
         } else {
-            Toast.makeText(this, "location is null", Toast.LENGTH_SHORT).show();
+
         }
         Log.d(TAG, "updateLocationUI: ends");
     }
@@ -312,41 +472,22 @@ public class MainActivity extends BaseActivity implements
         List<PatternItem> pattern = Arrays.<PatternItem>asList(
                 new Dot(), new Gap(20), new Dash(30), new Gap(20));
 
-//        if (mStraightPolyline.size() != 0 ){
-//            for(Polyline polyline : mStraightPolyline){
-//                polyline.remove(); // Remove existing polyline from the map
-//            }
-//        }
-
-        if (mDotedPolylines.size() != 0 ){
-            for(Polyline polyline : mDotedPolylines){
+        if (mDotedPolylines.size() != 0) {
+            for (Polyline polyline : mDotedPolylines) {
                 polyline.remove(); // Remove existing polyline from the map
             }
         }
 
-//        for (List<String> polyline : polylineList) {
-//
-//            PolylineOptions options = new PolylineOptions();
-//
-//            for(String p : polyline){
-//                options.addAll(PolyUtil.decode(p));
-//            }
-////            route.addAll(PolyUtil.decode(p));
-//            mStraightPolyline.add(mMap.addPolyline(options));
-//        }
-
-        for (PolylineOptions polylineOption: dotedPolylines){
+        for (PolylineOptions polylineOption : dotedPolylines) {
             Polyline p = mMap.addPolyline(polylineOption);
             p.setPattern(pattern);
             mDotedPolylines.add(p);
         }
 
-//        displayWakingPath();
-
         Bundle bundle = new Bundle();
-        bundle.putString("s","hello world");
+        bundle.putString("s", "hello world");
 
-        switchFragment(null,MyFragmentList.START_DIRECTION, bundle);
+        switchBottomFragment(MyFragmentList.START_DIRECTION, bundle);
 
         Log.d(TAG, "displayWakingPath: ends");
     }
@@ -356,12 +497,13 @@ public class MainActivity extends BaseActivity implements
 
         PolylineOptions options = new PolylineOptions();
 
-        for(String p : route){
-                options.addAll(PolyUtil.decode(p));
+        for (String p : route) {
+            options.addAll(PolyUtil.decode(p));
         }
 //            route.addAll(PolyUtil.decode(p));
         Polyline polyline = mMap.addPolyline(options);
         polyline.setColor(Color.BLUE);
+        polyline.setWidth(10);
         mStraightPolyline.add(polyline);
     }
 
@@ -372,8 +514,8 @@ public class MainActivity extends BaseActivity implements
         mMaker.remove();
 
         Log.d(TAG, "drawMarkers: starts");
-        for (MarkerOptions m : markerOptions){
-            Log.d(TAG, "drawMarkers: "+ m);
+        for (MarkerOptions m : markerOptions) {
+            Log.d(TAG, "drawMarkers: " + m);
             mMap.addMarker(m);
         }
 
@@ -394,41 +536,66 @@ public class MainActivity extends BaseActivity implements
                 2000, null);
     }
 
-    public void hideFragment(){
+    public void hideBottomFragment() {
 
-        if (mCurrentFragment instanceof StartFragment){
+        if (mCurrentBottomFragment instanceof StartFragment) {
             getSupportFragmentManager().beginTransaction()
-                    .setCustomAnimations(R.anim.start_slide_in,R.anim.start_slide_out)
-                    .hide(mCurrentFragment)
+                    .setCustomAnimations(R.anim.start_slide_in, R.anim.start_slide_out)
+                    .hide(mCurrentBottomFragment)
+                    .remove(mCurrentBottomFragment)
                     .commitAllowingStateLoss();
-        } else if (mCurrentFragment instanceof ShowDirection){
+        } else if (mCurrentBottomFragment instanceof ShowDirection) {
             getSupportFragmentManager().beginTransaction()
-                    .setCustomAnimations(R.anim.slide_in,R.anim.slide_out)
-                    .hide(mCurrentFragment)
+                    .setCustomAnimations(R.anim.show_direction_slide_in, R.anim.show_direction_slide_out)
+                    .hide(mCurrentBottomFragment)
+                    .remove(mCurrentBottomFragment)
+                    .commitAllowingStateLoss();
+        } else if (mCurrentBottomFragment instanceof BottomDistanceTimeFragment) {
+            getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.show_direction_slide_in, R.anim.show_direction_slide_out)
+                    .hide(mCurrentBottomFragment)
+                    .remove(mCurrentBottomFragment)
+                    .commitAllowingStateLoss();
+        }
+    }
+
+    public void hideHeaderFragment() {
+
+        if (mCurrentHeaderFragment instanceof CustomToolBar) {
+            getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.next_stop_info_slide_in, R.anim.next_stop_info_slide_out)
+                    .hide(mCurrentHeaderFragment)
+                    .remove(mCurrentHeaderFragment)
+                    .commitAllowingStateLoss();
+        } else if (mCurrentHeaderFragment instanceof NextStopInfo) {
+            getSupportFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.show_direction_slide_in, R.anim.show_direction_slide_out)
+                    .hide(mCurrentHeaderFragment)
+                    .remove(mCurrentHeaderFragment)
                     .commitAllowingStateLoss();
         }
 
     }
 
     @Override
-    public void switchFragment(Fragment fromFragment, String toFragment, Bundle bundle) {
+    public void switchBottomFragment(String toFragment, Bundle bundle) {
 
-        Log.d(TAG, "switchFragment: starts");
+        Log.d(TAG, "switchBottomFragment: starts");
         //animate hiding of the old fragment
 
-        if (mCurrentFragment != null){
-            hideFragment();
+        if (mCurrentBottomFragment != null) {
+            hideBottomFragment();
         }
-        switch (toFragment){
+        switch (toFragment) {
             case MyFragmentList.START_DIRECTION:
-                Log.d(TAG, "switchFragment: called");
+                Log.d(TAG, "switchBottomFragment: called");
 
                 StartFragment startFragment = new StartFragment();
-                mCurrentFragment = startFragment;
+                mCurrentBottomFragment = startFragment;
 
                 startFragment.setArguments(bundle);
                 getSupportFragmentManager().beginTransaction()
-                        .setCustomAnimations(R.anim.start_slide_in,R.anim.start_slide_out)
+                        .setCustomAnimations(R.anim.show_direction_slide_in, R.anim.show_direction_slide_out)
                         .add(R.id.container_layout, startFragment)
                         .commitAllowingStateLoss();
                 break;
@@ -436,20 +603,66 @@ public class MainActivity extends BaseActivity implements
             case MyFragmentList.SHOW_DIRECTION:
 
                 ShowDirection showDirection = new ShowDirection();
-                mCurrentFragment = showDirection;
+                mCurrentBottomFragment = showDirection;
                 showDirection.setArguments(bundle);
                 getSupportFragmentManager().beginTransaction()
-                        .setCustomAnimations(R.anim.slide_in,R.anim.slide_out)
+                        .setCustomAnimations(R.anim.show_direction_slide_in, R.anim.show_direction_slide_out)
                         .replace(R.id.container_layout, showDirection)
                         .commitAllowingStateLoss();
                 break;
 
-            case MyFragmentList.BUS_STOP_FRAG:
+            case MyFragmentList.BOTTOM_DISTANCE_TIME_FRAG:
+                BottomDistanceTimeFragment fragment = new BottomDistanceTimeFragment();
+                mCurrentBottomFragment = fragment;
+
+                getSupportFragmentManager().beginTransaction()
+                        .setCustomAnimations(R.anim.start_slide_in, R.anim.start_slide_out)
+                        .replace(R.id.container_layout, fragment)
+                        .commitAllowingStateLoss();
+
                 break;
             default:
                 break;
         }
-        Log.d(TAG, "switchFragment: ends");
+        Log.d(TAG, "switchBottomFragment: ends");
+    }
+
+
+    @Override
+    public void switchHeaderFragment(String toFragment, Bundle bundle) {
+
+        Log.d(TAG, "switchBottomFragment: starts");
+        //animate hiding of the old fragment
+
+        if (mCurrentHeaderFragment != null) {
+            hideHeaderFragment();
+        }
+        switch (toFragment) {
+            case MyFragmentList.CUSTOM_TOOLBAR:
+                Log.d(TAG, "switchBottomFragment: called");
+
+                CustomToolBar customToolBar = new CustomToolBar();
+                mCurrentHeaderFragment = customToolBar;
+
+                customToolBar.setArguments(bundle);
+                getSupportFragmentManager().beginTransaction()
+                        .add(R.id.container_header_layout, customToolBar)
+                        .commitAllowingStateLoss();
+                break;
+
+            case MyFragmentList.NEXT_STOP_INFO:
+
+                NextStopInfo nextStopInfo = new NextStopInfo();
+                mCurrentHeaderFragment = nextStopInfo;
+                nextStopInfo.setArguments(bundle);
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.container_header_layout, nextStopInfo)
+                        .commitAllowingStateLoss();
+                break;
+            default:
+                break;
+        }
+        Log.d(TAG, "switchHeaderFragment: ends");
     }
 
     /**
@@ -458,8 +671,8 @@ public class MainActivity extends BaseActivity implements
     @Override
     public void saveCloseStops(CloseStops stops) {
 
-         closeStopNameList = new ArrayList<>();
-         closeStoplocationList = new ArrayList<>();
+        closeStopNameList = new ArrayList<>();
+        closeStoplocationList = new ArrayList<>();
 
         List<BusStop> busStops = stops.getBusStop();
         if (busStops.size() > 0) {
@@ -470,8 +683,30 @@ public class MainActivity extends BaseActivity implements
             }
 
         }
-//
-//        mBusStopsFragment.displayCloseStops(stops,this);
+
+        if (mCurrentBottomFragment instanceof ShowDirection) {
+
+            ButterKnife.bind(this);
+
+            ViewSwitcher switcher = (ViewSwitcher) findViewById(R.id.viewSwitcher);
+            RelativeLayout progressbarContainer = (RelativeLayout) findViewById(R.id.pb_container);
+
+            if (busStops.size() > 0) {
+                stop1.setText(closeStopNameList.get(0));
+                stop2.setText(closeStopNameList.get(1));
+                stop3.setText(closeStopNameList.get(2));
+                stop4.setText(closeStopNameList.get(3));
+            }
+
+            if (switcher.getCurrentView() == progressbarContainer) {
+                switcher.showNext();
+                cancel.setVisibility(View.VISIBLE);
+                btnshowDirection.setVisibility(View.VISIBLE);
+                select_origin.setVisibility(View.VISIBLE);
+            }
+
+//            search.setText(destinationName);
+        }
 
     }
 
@@ -512,12 +747,12 @@ public class MainActivity extends BaseActivity implements
                 if (resultCode == RESULT_OK) {
                     Place place = PlaceAutocomplete.getPlace(this, data);
                     destinationName = (String) place.getName();
-                    tvSearch.setText(destinationName);
                     double destinationLat = place.getLatLng().latitude;
                     double destinationLng = place.getLatLng().longitude;
 
                     presenter.saveDestination(destinationLat, destinationLng);
-                    showClosestStops();
+                    requestClosestStops();
+                    showDestination();
 
                 } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                     Status status = PlaceAutocomplete.getStatus(this, data);
@@ -531,23 +766,24 @@ public class MainActivity extends BaseActivity implements
     }
 
 
+    private void requestClosestStops() {
 
-    private void showClosestStops(){
         Bundle bundle = new Bundle();
+        presenter.getClosestStops();
 
         bundle.putStringArrayList("stop_names", closeStopNameList);
         bundle.putStringArrayList("stop_location", closeStoplocationList);
-        switchFragment(null,MyFragmentList.SHOW_DIRECTION, bundle);
+        switchBottomFragment(MyFragmentList.SHOW_DIRECTION, bundle);
     }
 
     @Override
-    public void changeMapPadding(int padding){
+    public void changeMapBottomPadding(int padding) {
         mMapPadding = padding;
         ValueAnimator animator = ValueAnimator.ofInt(mMapPadding, padding);
         animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
-            public void onAnimationUpdate(ValueAnimator valueAnimator){
-                mMap.setPadding(0, 0, 0, (Integer) valueAnimator.getAnimatedValue());
+            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                mMap.setPadding(0, 116, 0, (Integer) valueAnimator.getAnimatedValue());
             }
         });
 
@@ -556,7 +792,7 @@ public class MainActivity extends BaseActivity implements
     }
 
 
-    public String getDestinationName(){
+    public String getDestinationName() {
         return destinationName;
     }
 
@@ -582,36 +818,43 @@ public class MainActivity extends BaseActivity implements
         }
         mMap.setMyLocationEnabled(true);
     }
-    public void startProgressBar(String message){
+
+    public void startProgressBar(String message) {
 
         mDialog.setMessage(message);
         mDialog.setCancelable(false);
         mDialog.setInverseBackgroundForced(false);
+
         mDialog.show();
     }
 
     /**
      * This function stops the progress bar then move the map camera to the destination of the user
-     * **/
-    public void stopProgressBar(){
-
+     ***/
+    public void stopProgressBar() {
+        Log.d(TAG, "stopProgressBar: ");
         mDialog.hide();
 
-        LatLng destination = presenter.getDestination();
-
-        if (mMaker != null) mMaker.remove(); // remove any existing destination marker from the map
-        mMaker = mMap.addMarker(new MarkerOptions() // add a new destination marker to the map
-                .title(destinationName)
-                .position(destination));
-
-//        mMap.setPadding(0, 0, 0, padding); // add padding to prevent obscuring the google logo
-        moveCameraToLocation(presenter.getDestination());
-
+        Log.d(TAG, "stopProgressBar: ends");
     }
 
+    public void showDestination() {
 
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        return false;
+        if (mCurrentHeaderFragment instanceof CustomToolBar) {
+
+            TextView tv_search = (TextView) findViewById(R.id.tv_search);
+
+            tv_search.setText(destinationName);
+
+            LatLng destination = presenter.getDestination();
+
+            if (mMaker != null)
+                mMaker.remove(); // remove any existing destination marker from the map
+            mMaker = mMap.addMarker(new MarkerOptions() // add a new destination marker to the map
+                    .title(destinationName)
+                    .position(destination));
+
+            moveCameraToLocation(presenter.getDestination());
+        }
     }
 }

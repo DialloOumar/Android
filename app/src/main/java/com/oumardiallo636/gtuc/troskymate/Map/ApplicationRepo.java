@@ -20,8 +20,8 @@ public interface ApplicationRepo {
         String baseUrl = "https://maps.googleapis.com/maps/api/";
         String apiKey ="AIzaSyAVDCXvs610OmEl1ximvN4lB3n-YKBdtmo";
 
-        @GET("directions/json")
-        Call<TroskyDirection> getGoogleRoutes(@Query("origin") String origin,
+        @GET("distancematrix/json")
+        Call<TroskyDirection> getDistanceAndTime(@Query("origin") String origin,
                                               @Query("destination") String destination,
                                               @Query("key") String key);
     }

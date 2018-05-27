@@ -6,24 +6,26 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import com.oumardiallo636.gtuc.troskymate.R;
+import com.oumardiallo636.gtuc.troskymate.Utility.MyFragmentList;
 
-import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 /**
  * A simple {@link Fragment} subclass.
  */
-public class StartFragment extends Fragment {
+public class StartFragment extends Fragment
+        implements ViewHelper.StartFragmentCallback{
 
-    @BindView(R.id.tv_arrival_time)
-    TextView arrivalTime;
+//    @BindView(R.id.tv_arrival_time)
+//    TextView arrivalTime;
+//
+//    @BindView(R.id.tv_distance)
+//    TextView estimateDistance;
 
-    @BindView(R.id.tv_distance)
-    TextView estimateDistance;
+
 
     public StartFragment() {
         // Required empty public constructor
@@ -42,7 +44,7 @@ public class StartFragment extends Fragment {
             @Override
             public void run() {
                 int height = view.getMeasuredHeight(); // for instance
-                MainActivity.getInstance().changeMapPadding(height);
+                MainActivity.getInstance().changeMapBottomPadding(height);
             }
         });
 
@@ -55,6 +57,12 @@ public class StartFragment extends Fragment {
 
         MainActivity.getInstance().clearMap();
 
+    }
+
+    @OnClick(R.id.btn_start)
+    public void start(){
+        MainActivity.getInstance().switchHeaderFragment(MyFragmentList.NEXT_STOP_INFO,null);
+        MainActivity.getInstance().switchBottomFragment(MyFragmentList.BOTTOM_DISTANCE_TIME_FRAG, null);
     }
 
 }

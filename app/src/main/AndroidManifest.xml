@@ -43,22 +43,21 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".Navigation"
-            android:label="@string/title_activity_navigation"
-            android:theme="@style/AppTheme.NoActionBar" />
-        <activity android:name=".search.SearchActivity"
+            android:name=".search.SearchActivity"
             android:parentActivityName=".Map.MainActivity">
-
-            <meta-data android:name="android.support.PARENT_ACTIVITY"
-                android:value=".Map.MainActivity"/>
-
-            <meta-data android:name="android.app.searchable"
-                android:resource="@xml/searchable"/>
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".Map.MainActivity" />
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
 
             <intent-filter>
                 <action android:name="android.intent.action.SEARCH" />
             </intent-filter>
         </activity>
+
+        <service android:name=".Map.GeofenceTransitionsIntentService" />
     </application>
 
 </manifest>

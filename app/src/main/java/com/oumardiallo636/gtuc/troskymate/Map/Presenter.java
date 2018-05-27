@@ -181,14 +181,13 @@ public class Presenter extends BaseActivity implements
             for (Route r : route ){
                 for (Leg leg : r.getLegs()){
                     for(Step step: leg.getSteps()){
+                        
                         routePolyline.add(step.getPolyline().getPoints());
                     }
                 }
             }
 
             mView.drawPolyline(routePolyline);
-
-//            polylineList.add(routePolyline);
         }
 
         Stop destinationStop = new Stop();
@@ -239,6 +238,7 @@ public class Presenter extends BaseActivity implements
      */
     @Override
     public void provideClosestStops(CloseStops stops) {
+        Log.d(TAG, "provideClosestStops: " +"starts");
         mView.saveCloseStops(stops);
     }
 
@@ -362,7 +362,6 @@ public class Presenter extends BaseActivity implements
 
         Log.d(TAG, "findDestination: starts");
 
-        getClosestStops();
 
         try {
             AutocompleteFilter typeFilter = new AutocompleteFilter.Builder()
@@ -409,6 +408,7 @@ public class Presenter extends BaseActivity implements
                                 mLocationCallback, Looper.myLooper());
 
                         mView.updateLocationUI(mCurrentLocation);
+
                     }
                 })
                 .addOnFailureListener(this, new OnFailureListener() {

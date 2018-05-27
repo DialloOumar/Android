@@ -2,7 +2,6 @@ package com.oumardiallo636.gtuc.troskymate.Map;
 
 import android.location.Location;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -27,13 +26,14 @@ public interface MapActivityMVP {
         void displayWakingPath(List<PolylineOptions> polylineOptions);
         void moveCameraToLocation(LatLng location);
         void drawMarkers(List<MarkerOptions> markerOptions);
-        void switchFragment(Fragment fromFragment, String toFragment, Bundle bundle);
+        void switchBottomFragment(String toFragment, Bundle bundle);
+        void switchHeaderFragment(String toFragment, Bundle bundle);
         void saveCloseStops(CloseStops stops);
         void clearMap();
         void showNoRouteDialogue(String message);
         void stopProgressBar();
         void startProgressBar(String message);
-        void changeMapPadding(int padding);
+        void changeMapBottomPadding(int padding);
         void searchDirection(String origin);
         String getDestinationName();
         void drawPolyline (List<String> route);

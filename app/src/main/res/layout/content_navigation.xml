@@ -5,8 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.oumardiallo636.gtuc.troskymate.Navigation"
-    tools:showIn="@layout/app_bar_navigation">
+    tools:context="com.oumardiallo636.gtuc.troskymate.Map.MainActivity"
+    tools:showIn="@layout/main_activity">
 
 
     <fragment
@@ -14,7 +14,6 @@
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         app:cameraZoom="13"
@@ -24,15 +23,7 @@
 
     </fragment>
 
-    <!--<include-->
-        <!--android:id="@+id/layout_direction"-->
-        <!--layout="@layout/direction_layout"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_alignParentBottom="true"-->
-        <!--android:layout_alignParentLeft="true"-->
-        <!--android:layout_alignParentStart="true"-->
-        <!--android:visibility="invisible" />-->
+
     <FrameLayout
         android:id="@+id/container_layout"
         android:layout_width="match_parent"
@@ -41,5 +32,15 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         />
+
+    <FrameLayout
+        android:id="@+id/container_header_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:elevation="12dp">
+
+    </FrameLayout>
 
 </RelativeLayout>
