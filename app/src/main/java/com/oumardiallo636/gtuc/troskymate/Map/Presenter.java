@@ -34,7 +34,6 @@ import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -45,6 +44,7 @@ import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Leg;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Route;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Step;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Stop;
+import com.oumardiallo636.gtuc.troskymate.Entities.Direction.WalkingPoints;
 import com.oumardiallo636.gtuc.troskymate.R;
 import com.oumardiallo636.gtuc.troskymate.Utility.MyStatus;
 
@@ -172,17 +172,20 @@ public class Presenter extends BaseActivity implements
     public void provideRoutes(List<List<Route>> routes, List<Stop> stops) {
         Log.d(TAG, "provideRoutes: starts");
 
-//        List<List<String>> polylineList = new ArrayList<>();
         List<MarkerOptions> markers = new ArrayList<>();
-        List<PolylineOptions> dotedPolylines = new ArrayList<>();
+        List<WalkingPoints> walkingPoints = new ArrayList<>();
+
+        Integer distance = 0;
+        int seconds = 0;
 
         for(List<Route> route : routes){
             List<String> routePolyline = new ArrayList<>();
             for (Route r : route ){
                 for (Leg leg : r.getLegs()){
                     for(Step step: leg.getSteps()){
-                        
+                        distance += step.getDistance().getValue();
                         routePolyline.add(step.getPolyline().getPoints());
+                        seconds += step.getDuration().getValue();
                     }
                 }
             }
@@ -208,13 +211,9 @@ public class Presenter extends BaseActivity implements
 
             if (busName.equals("WALKING")){
                 Log.d(TAG, "provideRoutes: walking called");
-                double nextLatitude = Double.parseDouble(stops.get(i+1).getStopLocation().split(",")[0]);
-                double nextLogitude = Double.parseDouble(stops.get(i+1).getStopLocation().split(",")[1]);
 
-                PolylineOptions polylineOptions = new PolylineOptions()
-                        .add(new LatLng(latitude,logitude), new LatLng(nextLatitude, nextLogitude));
-
-                dotedPolylines.add(polylineOptions);
+                walkingPoints.add(new WalkingPoints(stops.get(i).getStopLocation(),
+                        stops.get(i+1).getStopLocation()));
             }
 
             MarkerOptions options = new MarkerOptions();
@@ -226,10 +225,8 @@ public class Presenter extends BaseActivity implements
 
         mView.stopProgressBar();
         mView.drawMarkers(markers);
-        mView.displayWakingPath(dotedPolylines);
-//        mView.drawMarkers(markers);
-
-        Log.d(TAG, "provideRoutes: ends");
+        mView.displayWakingPath(walkingPoints);
+        mView.loadStartFragment(distance, seconds);
     }
 
 

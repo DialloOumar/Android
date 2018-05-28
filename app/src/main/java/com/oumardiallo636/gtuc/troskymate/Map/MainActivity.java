@@ -15,6 +15,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -41,7 +42,6 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.Dash;
 import com.google.android.gms.maps.model.Dot;
 import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
@@ -56,6 +56,7 @@ import com.google.maps.android.PolyUtil;
 import com.oumardiallo636.gtuc.troskymate.Animation.MapAnimator;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.BusStop;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
+import com.oumardiallo636.gtuc.troskymate.Entities.Direction.WalkingPoints;
 import com.oumardiallo636.gtuc.troskymate.R;
 import com.oumardiallo636.gtuc.troskymate.Utility.MyFragmentList;
 
@@ -64,6 +65,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -182,7 +184,8 @@ public class MainActivity extends BaseActivity implements
         }
 
         searchDirection(origin);
-        startProgressBar("Loading direction");
+//        startProgressBar("Loading direction");
+        switchBottomFragment(MyFragmentList.START_DIRECTION, null);
     }
 
     public static MapActivityMVP.View getInstance() {
@@ -251,14 +254,13 @@ public class MainActivity extends BaseActivity implements
                 .build());
 
 
-
-
     }
 
     /**
      * The following Method uses the GeofencingRequest class and its nested
      * GeofencingRequestBuilder class to specify the geofences to monitor and to
      * set how related geofence events are triggered:
+     *
      * @return
      */
 
@@ -269,7 +271,7 @@ public class MainActivity extends BaseActivity implements
         return builder.build();
     }
 
-    private void startGeofences(){
+    private void startGeofences() {
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -288,7 +290,7 @@ public class MainActivity extends BaseActivity implements
                         // Geofences added
                         // ...
 
-                        Toast.makeText(MainActivity.this, "geo added correctly",Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, "geo added correctly", Toast.LENGTH_LONG).show();
                     }
                 })
                 .addOnFailureListener(this, new OnFailureListener() {
@@ -297,7 +299,7 @@ public class MainActivity extends BaseActivity implements
                         // Failed to add geofences
                         // ...
 
-                        Toast.makeText(MainActivity.this, "geo added correctly",Toast.LENGTH_LONG);
+                        Toast.makeText(MainActivity.this, "geo added correctly", Toast.LENGTH_LONG);
                     }
                 });
     }
@@ -352,33 +354,6 @@ public class MainActivity extends BaseActivity implements
 
     }
 
-//    @OnClick(R.id.btn_show_direction)
-//    public void submit() {
-//        Log.d(TAG, "submit: start");
-//        displayWakingPath();
-//
-////        ConstraintLayout layout = findViewById(R.id.layout_direction);
-////        layout.removeView(tvBuses);
-////        layout.removeView(btnShowDirection);
-
-//    }
-
-//    @OnClick(R.id.fab)
-//    public void fabClick() {
-//        //move the camera to the current location
-//        LatLng location = new LatLng(presenter.getCurrentLocation().getLatitude(),
-//                presenter.getCurrentLocation().getLongitude());
-//        moveCameraToLocation(location);
-//    }
-
-//    @OnClick(R.id.tv_cancel_route)
-//    public void cancelClick() {
-//        if (mPolyline != null) mPolyline.remove();
-////        layoutDirection.setVisibility(View.INVISIBLE);
-//        tvSearch.setText("Search");
-//        mMap.setPadding(0, 0, 0, 0); // restore the padding of the map to 0
-//        mMaker.remove();
-//    }
 
     public void searchDirection(String origin) {
 
@@ -465,12 +440,11 @@ public class MainActivity extends BaseActivity implements
 
 
     @Override
-    public void displayWakingPath(List<PolylineOptions> dotedPolylines) {
+    public void displayWakingPath(List<WalkingPoints> walkingPoints) {
         Log.d(TAG, "displayWakingPath: starts");
 
-
         List<PatternItem> pattern = Arrays.<PatternItem>asList(
-                new Dot(), new Gap(20), new Dash(30), new Gap(20));
+                new Dot(), new Gap(10));
 
         if (mDotedPolylines.size() != 0) {
             for (Polyline polyline : mDotedPolylines) {
@@ -478,16 +452,26 @@ public class MainActivity extends BaseActivity implements
             }
         }
 
-        for (PolylineOptions polylineOption : dotedPolylines) {
-            Polyline p = mMap.addPolyline(polylineOption);
-            p.setPattern(pattern);
-            mDotedPolylines.add(p);
+        for (WalkingPoints path : walkingPoints) {
+
+            String origin = path.getOrigin();
+            double originLat = Double.parseDouble(origin.split(",")[0]);
+            double originLng = Double.parseDouble(origin.split(",")[1]);
+            LatLng originCoordinates = new LatLng(originLat, originLng);
+
+            String destination = path.getDestination();
+            double destiLat = Double.parseDouble(destination.split(",")[0]);
+            double destiLng = Double.parseDouble(destination.split(",")[1]);
+            LatLng destinationCoordinates = new LatLng(destiLat, destiLng);
+
+            PolylineOptions polylineOptions = new PolylineOptions()
+                    .add(originCoordinates)
+                    .add(destinationCoordinates)
+                    .color(Color.BLUE)
+                    .pattern(pattern);
+            mDotedPolylines.add(mMap.addPolyline(polylineOptions));
+
         }
-
-        Bundle bundle = new Bundle();
-        bundle.putString("s", "hello world");
-
-        switchBottomFragment(MyFragmentList.START_DIRECTION, bundle);
 
         Log.d(TAG, "displayWakingPath: ends");
     }
@@ -714,7 +698,6 @@ public class MainActivity extends BaseActivity implements
     public void showNoRouteDialogue(String message) {
 
         stopProgressBar();
-
         Snackbar.make(
                 findViewById(android.R.id.content),
                 message,
@@ -855,6 +838,48 @@ public class MainActivity extends BaseActivity implements
                     .position(destination));
 
             moveCameraToLocation(presenter.getDestination());
+        }
+    }
+
+    @Override
+    public void loadStartFragment(double distance, int seconds) {
+
+        double valueInkillo = distance / 1000;
+
+        int day = (int) TimeUnit.SECONDS.toDays(seconds);
+        long hours = TimeUnit.SECONDS.toHours(seconds) - (day * 24);
+        long minute = TimeUnit.SECONDS.toMinutes(seconds) - (TimeUnit.SECONDS.toHours(seconds) * 60);
+        long second = TimeUnit.SECONDS.toSeconds(seconds) - (TimeUnit.SECONDS.toMinutes(seconds) * 60);
+
+        StringBuilder remainingTime = new StringBuilder();
+
+        if (day != 0){
+            remainingTime.append(day)
+                   .append("day ");
+        }
+
+        remainingTime.append(hours)
+                .append("h ")
+                .append(minute)
+                .append("min ")
+                .append(second)
+                .append("s");
+
+        if (mCurrentBottomFragment instanceof StartFragment) {
+
+            ViewSwitcher viewSwitcher = (ViewSwitcher) findViewById(R.id.vs_start);
+            TextView distanceTextView = (TextView) findViewById(R.id.tv_distance);
+            TextView arrivalTime = (TextView) findViewById(R.id.tv_arrival_time);
+            Button start = (Button) findViewById(R.id.btn_start);
+
+            ConstraintLayout constraintLayout = (ConstraintLayout) findViewById(R.id.ct_layout_progressBar);
+
+            if (viewSwitcher.getCurrentView() == constraintLayout) {
+                viewSwitcher.showNext();
+                start.setVisibility(View.VISIBLE);
+                distanceTextView.setText(valueInkillo+"km");
+                arrivalTime.setText(remainingTime.toString());
+            }
         }
     }
 }
