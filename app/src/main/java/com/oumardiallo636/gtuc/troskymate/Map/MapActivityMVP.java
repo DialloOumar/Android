@@ -9,6 +9,7 @@ import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Route;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Stop;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.WalkingPoints;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.MatrixInfo;
 
 import java.util.List;
 
@@ -31,15 +32,24 @@ public interface MapActivityMVP {
         void saveCloseStops(CloseStops stops);
         void clearMap();
         void showNoRouteDialogue(String message);
-        void stopProgressBar();
-        void startProgressBar(String message);
+
+        //geofence callbacks
+        void createGeofences(List<Stop> stops);
+        void startGeofences();
+        void removeAGeofence(String message);
+
         void changeMapBottomPadding(int padding);
         void searchDirection(String origin);
         String getDestinationName();
         void drawPolyline (List<String> route);
+
+        void geofenceResponse(String message);
 //
 //        void displayWakingPath(List<PolylineOptions> polylineOptions);
         void displayWakingPath(List<WalkingPoints> walkingPoints);
+
+        void updateNextStopTimeAndDate(long second, int distance);
+        void updateFinalStopTimeAndDate(long second, int distance);
 
 
     }
@@ -65,6 +75,8 @@ public interface MapActivityMVP {
         void getDirection(String origin, String destination);
         void provideClosestStops(CloseStops stops);
         void notifyNoRouteFound(int status);
+        void getDistanceAndTime(List<String> origins, List<String> destinations );
+        void provideDistanceAndTime(MatrixInfo nextStop, MatrixInfo lastStop);
 
     }
 
@@ -72,6 +84,7 @@ public interface MapActivityMVP {
 
         void requestClosestBuses(String origin);
         void requestDirectionApi(String origin, String destination);
+        void requestDistanceAndTime(String origin, String destination);
 
     }
 }

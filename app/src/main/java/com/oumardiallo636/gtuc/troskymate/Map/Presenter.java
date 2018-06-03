@@ -45,6 +45,7 @@ import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Route;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Step;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Stop;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.WalkingPoints;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.MatrixInfo;
 import com.oumardiallo636.gtuc.troskymate.R;
 import com.oumardiallo636.gtuc.troskymate.Utility.MyStatus;
 
@@ -223,7 +224,8 @@ public class Presenter extends BaseActivity implements
             markers.add(options);
         }
 
-        mView.stopProgressBar();
+//        mView.stopProgressBar();
+        mView.createGeofences(stops);
         mView.drawMarkers(markers);
         mView.displayWakingPath(walkingPoints);
         mView.loadStartFragment(distance, seconds);
@@ -576,6 +578,45 @@ public class Presenter extends BaseActivity implements
 //            updateUI();
             startLocationUpdates();
         }
+    }
+
+
+    @Override
+    public void getDistanceAndTime(List<String> origins, List<String> destinations ){
+
+        Log.d(TAG, "getDistanceAndTime: starts");
+
+        StringBuilder originBuilder = new StringBuilder();
+
+        for (String origin: origins){
+            originBuilder.append(origin)
+                    .append("|");
+        }
+
+        String origin = originBuilder.toString().substring(0, originBuilder.length()-1);
+
+        StringBuilder destinationBuilder = new StringBuilder();
+
+        for (String destination: destinations){
+            destinationBuilder.append(destination)
+                    .append("|");
+        }
+
+        String destination = destinationBuilder.toString().substring(0, destinationBuilder.length()-1);
+
+        mModel.requestDistanceAndTime(origin, destination);
+
+        Log.d(TAG, "getDistanceAndTime: ends");
+    }
+
+    @Override
+    public void provideDistanceAndTime(MatrixInfo nextStop, MatrixInfo lastStop){
+        Log.d(TAG, "provideDistanceAndTime: starts");
+
+        mView.updateNextStopTimeAndDate(nextStop.getSeconds(),nextStop.getDistance());
+        mView.updateFinalStopTimeAndDate(lastStop.getSeconds(),lastStop.getDistance());
+
+        Log.d(TAG, "provideDistanceAndTime: ends");
     }
 
 }

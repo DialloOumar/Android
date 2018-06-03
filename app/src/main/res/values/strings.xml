@@ -38,5 +38,7 @@
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="get_ready_to_stop_at">GET READY TO STOP AT</string>
+    <string name="alight_at">ALIGHT AT</string>
 
 </resources>

@@ -2,7 +2,10 @@ package com.oumardiallo636.gtuc.troskymate.Map;
 
 import android.app.IntentService;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
@@ -24,6 +27,13 @@ public class GeofenceTransitionsIntentService extends IntentService {
         super("GeofenceTransitionsIntentService");
     }
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        Log.d(TAG, "onCreate: geo intent service");
+    }
+
     protected void onHandleIntent(Intent intent) {
         GeofencingEvent geofencingEvent = GeofencingEvent.fromIntent(intent);
         if (geofencingEvent.hasError()) {
@@ -36,9 +46,9 @@ public class GeofenceTransitionsIntentService extends IntentService {
         // Get the transition type.
         int geofenceTransition = geofencingEvent.getGeofenceTransition();
 
+
         // Test that the reported transition was of interest.
-        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER ||
-                geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
+        if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER) {
 
             Log.d(TAG, "onHandleIntent: In geofence");
 
@@ -46,7 +56,23 @@ public class GeofenceTransitionsIntentService extends IntentService {
             // multiple geofences.
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
 
-            // Get the transition details as a String.
+            for (final Geofence geofence: triggeringGeofences){
+
+                Log.d(TAG, "onHandleIntent: In geofence "+geofence.getRequestId());
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        Toast.makeText(getApplicationContext(), "Enter", Toast.LENGTH_LONG).show();
+                    }
+                });
+
+                MainActivity.getInstance().geofenceResponse(geofence.getRequestId());
+
+            }
+
+//             Get the transition details as a String.
 //            String geofenceTransitionDetails = getGeofenceTransitionDetails(
 //                    this,
 //                    geofenceTransition,
@@ -56,7 +82,29 @@ public class GeofenceTransitionsIntentService extends IntentService {
             // Send notification and log the transition details.
 //            sendNotification(geofenceTransitionDetails);
 //            Log.i(TAG, geofenceTransitionDetails);
-        } else {
+        } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT){
+
+            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
+
+            for (final Geofence geofence: triggeringGeofences){
+
+                Log.d(TAG, "onHandleIntent: In geofence "+geofence.getRequestId());
+
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        Toast.makeText(getApplicationContext(), "Exit", Toast.LENGTH_LONG).show();
+                    }
+                });
+
+                MainActivity.getInstance().geofenceResponse(geofence.getRequestId());
+
+            }
+        }
+
+        else {
 //            // Log the error.
 //            Log.e(TAG, getString(R.string.geofence_transition_invalid_type,
 //                    geofenceTransition));

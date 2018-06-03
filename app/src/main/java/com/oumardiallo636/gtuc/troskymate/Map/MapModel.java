@@ -4,8 +4,14 @@ import android.util.Log;
 
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.TroskyDirection;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.Element;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.MatrixInfo;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.Row;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.TimeDistanceMatrix;
 import com.oumardiallo636.gtuc.troskymate.Utility.HttpCaller;
 import com.oumardiallo636.gtuc.troskymate.Utility.MyStatus;
+
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -141,6 +147,67 @@ public class MapModel implements MapActivityMVP.Model {
                 presenter.notifyNoRouteFound(405);
             }
         });
+
+    }
+
+    @Override
+    public void requestDistanceAndTime(String origin, String destination) {
+
+        Log.d(TAG, "requestDistanceAndTime: starts");
+
+        String baseUrl = ApplicationRepo.GoogleRepo.baseUrl;
+        String apiKey = ApplicationRepo.GoogleRepo.apiKey;
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .client(HttpCaller.getInstance())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApplicationRepo.GoogleRepo googleRepo = retrofit.create(ApplicationRepo.GoogleRepo.class);
+
+        Call<TimeDistanceMatrix> call = googleRepo.getDistanceAndTime(origin,destination,apiKey);
+
+        call.enqueue(new Callback<TimeDistanceMatrix>() {
+            @Override
+            public void onResponse(Call<TimeDistanceMatrix> call, Response<TimeDistanceMatrix> response) {
+
+                Log.d(TAG, "onResponse: starts");
+
+                TimeDistanceMatrix timeDistanceMatrix = response.body();
+
+                Log.d(TAG, "onResponsetime: "+timeDistanceMatrix.getStatus());
+                Log.d(TAG, "onResponsetime"+call.request().url());
+
+                if (timeDistanceMatrix.getStatus().equalsIgnoreCase("ok")){
+
+                    Log.d(TAG, "onResponsetime: "+timeDistanceMatrix.getRows().size());
+                    Row row = timeDistanceMatrix.getRows().get(0);
+
+                    List<Element> elements = row.getElements();
+
+                    Integer nextStopDuration = elements.get(0).getDuration().getValue();
+                    Integer nextStopDistance = elements.get(0).getDistance().getValue();
+
+                    Integer lastStopDuration = elements.get(1).getDuration().getValue();
+                    Integer lastStopDistance = elements.get(1).getDistance().getValue();
+
+                    MatrixInfo nextStop = new MatrixInfo(nextStopDuration, nextStopDistance);
+                    MatrixInfo lastStop = new MatrixInfo(lastStopDuration, lastStopDistance);
+
+                    presenter.provideDistanceAndTime(nextStop, lastStop);
+
+                    Log.d(TAG, "onResponse: ends");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<TimeDistanceMatrix> call, Throwable t) {
+
+            }
+        });
+
+        Log.d(TAG, "requestDistanceAndTime: ends");
 
     }
 

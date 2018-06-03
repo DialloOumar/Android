@@ -62,7 +62,9 @@ public class StartFragment extends Fragment
     @OnClick(R.id.btn_start)
     public void start(){
         MainActivity.getInstance().switchHeaderFragment(MyFragmentList.NEXT_STOP_INFO,null);
-        MainActivity.getInstance().switchBottomFragment(MyFragmentList.BOTTOM_DISTANCE_TIME_FRAG, null);
+        MainActivity.getInstance().switchBottomFragment(MyFragmentList.BOTTOM_DISTANCE_TIME_FRAG,
+                null);
+        MainActivity.getInstance().startGeofences();
     }
 
 }

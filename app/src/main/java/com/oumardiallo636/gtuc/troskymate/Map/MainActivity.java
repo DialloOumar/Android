@@ -14,6 +14,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.Snackbar;
@@ -22,6 +24,7 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
@@ -56,8 +59,10 @@ import com.google.maps.android.PolyUtil;
 import com.oumardiallo636.gtuc.troskymate.Animation.MapAnimator;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.BusStop;
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
+import com.oumardiallo636.gtuc.troskymate.Entities.Direction.Stop;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.WalkingPoints;
 import com.oumardiallo636.gtuc.troskymate.R;
+import com.oumardiallo636.gtuc.troskymate.Utility.DayTimeSecondConverter;
 import com.oumardiallo636.gtuc.troskymate.Utility.MyFragmentList;
 
 import java.util.ArrayList;
@@ -65,7 +70,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -116,6 +120,11 @@ public class MainActivity extends BaseActivity implements
     private GeofencingClient mGeofencingClient;
     private ArrayList<Geofence> mGeofenceList;
     private PendingIntent mGeofencePendingIntent;
+    private ArrayList<Stop> mListBusStops;
+
+    private Stop mNextStop;
+    private Stop mCurrentStop;
+    private Stop mDestinationStop;
 
     ProgressDialog mDialog;
 
@@ -184,7 +193,7 @@ public class MainActivity extends BaseActivity implements
         }
 
         searchDirection(origin);
-//        startProgressBar("Loading direction");
+
         switchBottomFragment(MyFragmentList.START_DIRECTION, null);
     }
 
@@ -237,21 +246,6 @@ public class MainActivity extends BaseActivity implements
 
         mDialog = new ProgressDialog(this);
         mGeofencingClient = LocationServices.getGeofencingClient(this);
-        mGeofenceList = new ArrayList<>();
-
-        mGeofenceList.add(new Geofence.Builder()
-                // Set the request ID of the geofence. This is a string to identify this
-                // geofence.
-                .setRequestId("geofence1")
-                .setCircularRegion(
-                        5.603153,
-                        -0.235881,
-                        50
-                )
-                .setExpirationDuration(60000)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
 
 
     }
@@ -263,60 +257,6 @@ public class MainActivity extends BaseActivity implements
      *
      * @return
      */
-
-    private GeofencingRequest getGeofencingRequest() {
-        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
-        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
-        builder.addGeofences(mGeofenceList);
-        return builder.build();
-    }
-
-    private void startGeofences() {
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mGeofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent())
-                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        // Geofences added
-                        // ...
-
-                        Toast.makeText(MainActivity.this, "geo added correctly", Toast.LENGTH_LONG).show();
-                    }
-                })
-                .addOnFailureListener(this, new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        // Failed to add geofences
-                        // ...
-
-                        Toast.makeText(MainActivity.this, "geo added correctly", Toast.LENGTH_LONG);
-                    }
-                });
-    }
-
-
-    private PendingIntent getGeofencePendingIntent() {
-        // Reuse the PendingIntent if we already have it.
-        if (mGeofencePendingIntent != null) {
-            return mGeofencePendingIntent;
-        }
-        Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
-        // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when
-        // calling addGeofences() and removeGeofences().
-        mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.
-                FLAG_UPDATE_CURRENT);
-        return mGeofencePendingIntent;
-    }
 
     @Override
     public void onResume() {
@@ -340,20 +280,61 @@ public class MainActivity extends BaseActivity implements
         presenter.stopLocationUpdates();
     }
 
+
     @Override
-    public void onMapReady(GoogleMap googleMap) {
-        Log.d(TAG, "onMapReady: starts");
-        mMap = googleMap;
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.d(TAG, "onActivityResult: starts");
+        switch (requestCode) {
+            // Check for the integer request code originally supplied to startResolutionForResult().
+            case REQUEST_CHECK_SETTINGS:
+                switch (resultCode) {
+                    case Activity.RESULT_OK:
+                        Log.i(TAG, "User agreed to make required location settings changes.");
+                        // Nothing to do. startLocationupdates() gets called in onResume again.
+                        break;
+                    case Activity.RESULT_CANCELED:
+                        Log.i(TAG, "User chose not to make required location settings changes.");
+//                        mRequestingLocationUpdates = false;
+////                        updateUI();
+//                        startLocationUpdates();
+                        break;
+                }
+                break;
+            case PLACE_AUTOCOMPLETE_REQUEST_CODE:
 
-        showCurrentLocation();
-        mMap.setBuildingsEnabled(true);
-        UiSettings uiSettings = googleMap.getUiSettings();
-        uiSettings.setZoomControlsEnabled(true);
+                if (resultCode == RESULT_OK) {
+                    Place place = PlaceAutocomplete.getPlace(this, data);
+                    destinationName = (String) place.getName();
+                    Double destinationLat = place.getLatLng().latitude;
+                    Double destinationLng = place.getLatLng().longitude;
 
-        mMap.setPadding(0, 108, 0, 0);
+                    // keeping a reference of the final destination
 
+                    StringBuilder destinationBuilder = new StringBuilder();
+                    destinationBuilder.append(destinationLat.toString())
+                            .append(",")
+                            .append(destinationLng.toString());
+
+                    mDestinationStop = new Stop();
+                    mDestinationStop.setStopName(destinationName);
+                    mDestinationStop.setBusName("END");
+                    mDestinationStop.setStopLocation(destinationBuilder.toString());
+
+
+                    presenter.saveDestination(destinationLat, destinationLng);
+                    requestClosestStops();
+                    showDestination();
+
+                } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                    Status status = PlaceAutocomplete.getStatus(this, data);
+                    // TODO: Handle the error.
+                    Log.i(TAG, status.getStatusMessage());
+
+                } else if (resultCode == RESULT_CANCELED) {
+                    // The user canceled the operation.
+                }
+        }
     }
-
 
     public void searchDirection(String origin) {
 
@@ -371,23 +352,6 @@ public class MainActivity extends BaseActivity implements
 
         clearMap();
         presenter.findDestination();
-    }
-
-    public void clearMap() {
-        mMap.clear();
-        hideBottomFragment();
-
-        if (!(mCurrentHeaderFragment instanceof CustomToolBar)) {
-            switchHeaderFragment(MyFragmentList.CUSTOM_TOOLBAR, null);
-            search.setText(null);
-            search.setHint("Where to ?");
-        }
-
-        if (search != null) {
-            search.setText(null);
-        }
-
-        changeMapBottomPadding(0);
     }
 
     /**
@@ -440,43 +404,6 @@ public class MainActivity extends BaseActivity implements
 
 
     @Override
-    public void displayWakingPath(List<WalkingPoints> walkingPoints) {
-        Log.d(TAG, "displayWakingPath: starts");
-
-        List<PatternItem> pattern = Arrays.<PatternItem>asList(
-                new Dot(), new Gap(10));
-
-        if (mDotedPolylines.size() != 0) {
-            for (Polyline polyline : mDotedPolylines) {
-                polyline.remove(); // Remove existing polyline from the map
-            }
-        }
-
-        for (WalkingPoints path : walkingPoints) {
-
-            String origin = path.getOrigin();
-            double originLat = Double.parseDouble(origin.split(",")[0]);
-            double originLng = Double.parseDouble(origin.split(",")[1]);
-            LatLng originCoordinates = new LatLng(originLat, originLng);
-
-            String destination = path.getDestination();
-            double destiLat = Double.parseDouble(destination.split(",")[0]);
-            double destiLng = Double.parseDouble(destination.split(",")[1]);
-            LatLng destinationCoordinates = new LatLng(destiLat, destiLng);
-
-            PolylineOptions polylineOptions = new PolylineOptions()
-                    .add(originCoordinates)
-                    .add(destinationCoordinates)
-                    .color(Color.BLUE)
-                    .pattern(pattern);
-            mDotedPolylines.add(mMap.addPolyline(polylineOptions));
-
-        }
-
-        Log.d(TAG, "displayWakingPath: ends");
-    }
-
-    @Override
     public void drawPolyline(List<String> route) {
 
         PolylineOptions options = new PolylineOptions();
@@ -491,34 +418,256 @@ public class MainActivity extends BaseActivity implements
         mStraightPolyline.add(polyline);
     }
 
+    /**
+     * ********************************** GEOFENCE MANAGEMENT  ***********************************
+     **/
+
     @Override
-    public void drawMarkers(List<MarkerOptions> markerOptions) {
+    public void createGeofences(List<Stop> stops) {
+        Log.d(TAG, "createGeofences: starts");
 
-        //remove destination marker
-        mMaker.remove();
+        mGeofenceList = new ArrayList<>();
+        mListBusStops = new ArrayList<>();
 
-        Log.d(TAG, "drawMarkers: starts");
-        for (MarkerOptions m : markerOptions) {
-            Log.d(TAG, "drawMarkers: " + m);
-            mMap.addMarker(m);
+        mListBusStops.addAll(stops);
+
+        for (int i = 0; i < stops.size(); i++) {
+
+            double lat = Double.parseDouble(stops.get(i).getStopLocation().split(",")[0]);
+            double lng = Double.parseDouble(stops.get(i).getStopLocation().split(",")[1]);
+
+            mGeofenceList.add(new Geofence.Builder()
+                    .setRequestId(i + "")
+                    .setCircularRegion(lat, lng, 20)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                            Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .setExpirationDuration(6000)
+                    .build());
+
+            if (!stops.get(i).getBusName().equalsIgnoreCase("walking")) {
+
+                mGeofenceList.add(new Geofence.Builder()
+                        .setRequestId(i + "_ALERT")
+                        .setCircularRegion(lat, lng, 50)
+                        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                                Geofence.GEOFENCE_TRANSITION_EXIT)
+                        .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                        .build());
+            }
+
+
         }
 
-        Log.d(TAG, "drawMarkers: ends");
+        mGeofenceList.add(new Geofence.Builder()
+                .setRequestId("1_Alert")
+                .setCircularRegion(
+                        5.603121,
+                        -0.235921,
+                        1000
+                )
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
+                        Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build());
+
+        Log.d(TAG, "createGeofences: ends");
     }
 
     @Override
-    public void moveCameraToLocation(LatLng location) {
-//        LatLng currentLocation = new LatLng(location.getAltitude(),location.getLongitude());
-        // mMap.moveCamera(CameraUpdateFactory.newLatLng(location));
-        CameraPosition cameraPosition = CameraPosition.builder()
-                .target(location)
-                .zoom(13)
-                .bearing(90)
-                .build();
-        // Animate the change in camera view over 2 seconds
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition),
-                2000, null);
+    public void geofenceResponse(final String message) {
+
+        Log.d(TAG, "geofenceResponse: starts");
+//
+//        Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+//        // Vibrate for 500 milliseconds
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            v.vibrate(VibrationEffect.createOneShot(3, VibrationEffect.DEFAULT_AMPLITUDE));
+//        }else{
+//            //deprecated in API 26
+//            v.vibrate(3);
+//        }
+//        new Handler(Looper.getMainLooper()).post(new Runnable() {
+//            @Override
+//            public void run() {
+//
+//                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+//                // Vibrate for 500 milliseconds
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                    v.vibrate(VibrationEffect.createOneShot(3, VibrationEffect.DEFAULT_AMPLITUDE));
+//                }else{
+//                    //deprecated in API 26
+//                    v.vibrate(3);
+//                }
+//            }
+//        });
+
+        // if the size is two it means this message is an alert
+        int size = message.split("_").length;
+        boolean isMessageAnAlert = (size > 1) ? true : false;
+
+        int previousStopId = Integer.parseInt(message.split("_")[0]);
+
+        mCurrentStop = mListBusStops.get(previousStopId);
+
+        if ( (mCurrentHeaderFragment instanceof NextStopInfo) && (mListBusStops.size() >= previousStopId+1)){
+
+
+
+            final TextView directionInfoTV =  findViewById(R.id.tv_info);
+            final TextView stopNameInfoTV = (TextView) findViewById(R.id.tv_next_stop_name);
+            final Stop nextBusStop = mListBusStops.get(previousStopId + 1);
+
+            mNextStop = mListBusStops.get(previousStopId + 1);
+
+            Stop previousStop = mListBusStops.get(previousStopId);
+
+            final String directionMessage;
+
+            if (isMessageAnAlert){
+                Log.d(TAG, "geofenceResponse: got here");
+
+                directionMessage= getResources().getString(R.string.get_ready_to_stop_at);
+
+            }else {
+                directionMessage = getResources().getString(R.string.alight_at);
+
+                changeDirectionIcon(previousStop);
+            }
+
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+
+                @Override
+                public void run() {
+                    Log.d(TAG, "geofenceResponse: got run");
+                    directionInfoTV.setText(directionMessage);
+                    stopNameInfoTV.setText(nextBusStop.getStopName());
+
+                }
+            });
+
+        } else {
+
+            // set the next stop to null when there is no next top
+            mNextStop = null;
+        }
+
+//        new Handler(Looper.getMainLooper()).post(new Runnable() {
+//            @Override
+//            public void run() {
+//            }
+//        });
+
+        Log.d(TAG, "geofenceResponse: ends");
     }
+
+    private void changeDirectionIcon(Stop previousStop){
+
+        final ImageView directionIconInfoIm = (ImageView) findViewById(R.id.im_direction_icon);
+
+        if (previousStop.getBusName().equalsIgnoreCase("walking")){
+
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+
+                @Override
+                public void run() {
+                    directionIconInfoIm.setImageResource(R.drawable.ic_directions_walk_24dp);
+                }
+            });
+
+        }else {
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+
+                @Override
+                public void run() {
+                    directionIconInfoIm.setImageResource(R.drawable.ic_directions_bus_24dp);
+                }
+            });
+        }
+    }
+
+    private PendingIntent getGeofencePendingIntent() {
+        // Reuse the PendingIntent if we already have it.
+        if (mGeofencePendingIntent != null) {
+            return mGeofencePendingIntent;
+        }
+
+        Intent intent = new Intent(this, GeofenceTransitionsIntentService.class);
+        // We use FLAG_UPDATE_CURRENT so that we get the same pending intent back when
+        // calling addGeofences() and removeGeofences().
+        mGeofencePendingIntent = PendingIntent.getService(this, 0, intent, PendingIntent.
+                FLAG_UPDATE_CURRENT);
+        return mGeofencePendingIntent;
+    }
+
+    private GeofencingRequest getGeofencingRequest() {
+        GeofencingRequest.Builder builder = new GeofencingRequest.Builder();
+        builder.setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER);
+        builder.addGeofences(mGeofenceList);
+        return builder.build();
+    }
+
+    @Override
+    public void startGeofences() {
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mGeofencingClient.addGeofences(getGeofencingRequest(), getGeofencePendingIntent())
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        // Geofences added
+                        // ...
+                        Toast.makeText(MainActivity.this, "geo added correctly", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Failed to add geofences
+                        // ...
+
+                        Toast.makeText(MainActivity.this, "Failure to add geofence", Toast.LENGTH_LONG);
+                    }
+                });
+    }
+
+    @Override
+    public void removeAGeofence(final String message) {
+
+        List<String> toRemove = new ArrayList<String>();
+
+        toRemove.add(message);
+
+        mGeofencingClient.removeGeofences(toRemove)
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        // Geofences removed
+                        // ...
+
+                        Toast.makeText(MainActivity.this, message + " removed", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Failed to remove geofences
+                        // ...
+                    }
+                });
+    }
+
+    /**
+     * ****************************** FRAGMENT MANAGEMENT *************************************
+     **/
 
     public void hideBottomFragment() {
 
@@ -650,6 +799,178 @@ public class MainActivity extends BaseActivity implements
     }
 
     /**
+     * ********************************** Map Management ************************************
+     */
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        Log.d(TAG, "onMapReady: starts");
+        mMap = googleMap;
+
+        showCurrentLocation();
+        mMap.setBuildingsEnabled(true);
+        UiSettings uiSettings = googleMap.getUiSettings();
+        uiSettings.setZoomControlsEnabled(true);
+
+        mMap.setPadding(0, 108, 0, 0);
+
+    }
+
+    @Override
+    public void drawMarkers(List<MarkerOptions> markerOptions) {
+
+        //remove destination marker
+        mMaker.remove();
+
+        Log.d(TAG, "drawMarkers: starts");
+        for (MarkerOptions m : markerOptions) {
+            Log.d(TAG, "drawMarkers: " + m);
+            mMap.addMarker(m);
+        }
+
+        Log.d(TAG, "drawMarkers: ends");
+    }
+
+    @Override
+    public void moveCameraToLocation(LatLng location) {
+//        LatLng currentLocation = new LatLng(location.getAltitude(),location.getLongitude());
+        // mMap.moveCamera(CameraUpdateFactory.newLatLng(location));
+        CameraPosition cameraPosition = CameraPosition.builder()
+                .target(location)
+                .zoom(13)
+                .bearing(90)
+                .build();
+        // Animate the change in camera view over 2 seconds
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition),
+                2000, null);
+    }
+
+    @Override
+    public void changeMapBottomPadding(int padding) {
+        mMapPadding = padding;
+        ValueAnimator animator = ValueAnimator.ofInt(mMapPadding, padding);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                mMap.setPadding(0, 116, 0, (Integer) valueAnimator.getAnimatedValue());
+            }
+        });
+
+        animator.setDuration(5000);
+        animator.start();
+    }
+
+    public void clearMap() {
+        mMap.clear();
+        hideBottomFragment();
+
+        if (!(mCurrentHeaderFragment instanceof CustomToolBar)) {
+            switchHeaderFragment(MyFragmentList.CUSTOM_TOOLBAR, null);
+            search.setText(null);
+            search.setHint("Where to ?");
+        }
+
+        if (search != null) {
+            search.setText(null);
+        }
+
+        changeMapBottomPadding(0);
+    }
+
+    public void showDestination() {
+
+        if (mCurrentHeaderFragment instanceof CustomToolBar) {
+
+            TextView tv_search = (TextView) findViewById(R.id.tv_search);
+
+            tv_search.setText(destinationName);
+
+            LatLng destination = presenter.getDestination();
+
+            if (mMaker != null)
+                mMaker.remove(); // remove any existing destination marker from the map
+            mMaker = mMap.addMarker(new MarkerOptions() // add a new destination marker to the map
+                    .title(destinationName)
+                    .position(destination));
+
+            moveCameraToLocation(presenter.getDestination());
+        }
+    }
+
+
+    private void startAnim(List<LatLng> route) {
+        if (mMap != null) {
+            MapAnimator.getInstance().animateRoute(mMap, route);
+        } else {
+            Toast.makeText(getApplicationContext(), "Map not ready", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+
+        updateNavigationLayout();
+        mMap.setMyLocationEnabled(true);
+    }
+
+    private void updateNavigationLayout(){
+
+        if ( (mCurrentHeaderFragment instanceof NextStopInfo)
+                && (mCurrentBottomFragment instanceof BottomDistanceTimeFragment) ){
+
+            List<String> origin = new ArrayList<>();
+
+            Location location = presenter.getCurrentLocation();
+            Double lat = location.getLatitude();
+            Double lng = location.getLongitude();
+
+            StringBuilder originBuilder = new StringBuilder();
+            originBuilder.append(lat.toString())
+                    .append(",")
+                    .append(lng.toString());
+
+            origin.add(originBuilder.toString());
+
+            List<String> destination = new ArrayList<>();
+
+            if (mNextStop != null){
+                destination.add(mNextStop.getStopLocation());
+                destination.add(mDestinationStop.getStopLocation());
+            }
+
+            presenter.getDistanceAndTime(origin,destination);
+
+        }
+
+    }
+
+    /**
+     * ****************************** REQUEST MANAGEMENT **********************************
+     * */
+    private void requestClosestStops() {
+
+        Bundle bundle = new Bundle();
+        presenter.getClosestStops();
+
+//        bundle.putStringArrayList("stop_names", closeStopNameList);
+//        bundle.putStringArrayList("stop_location", closeStoplocationList);
+        switchBottomFragment(MyFragmentList.SHOW_DIRECTION, bundle);
+    }
+
+    /**
+     ********************************* RESPONSE MANAGEMENT **************************************
+     * */
+
+    /**
      * Callback received when a list of close bus stops have been returned.
      */
     @Override
@@ -695,149 +1016,109 @@ public class MainActivity extends BaseActivity implements
     }
 
     @Override
-    public void showNoRouteDialogue(String message) {
+    public void displayWakingPath(List<WalkingPoints> walkingPoints) {
+        Log.d(TAG, "displayWakingPath: starts");
 
-        stopProgressBar();
-        Snackbar.make(
-                findViewById(android.R.id.content),
-                message,
-                Snackbar.LENGTH_LONG)
-                .show();
+        List<PatternItem> pattern = Arrays.<PatternItem>asList(
+                new Dot(), new Gap(10));
 
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult: starts");
-        switch (requestCode) {
-            // Check for the integer request code originally supplied to startResolutionForResult().
-            case REQUEST_CHECK_SETTINGS:
-                switch (resultCode) {
-                    case Activity.RESULT_OK:
-                        Log.i(TAG, "User agreed to make required location settings changes.");
-                        // Nothing to do. startLocationupdates() gets called in onResume again.
-                        break;
-                    case Activity.RESULT_CANCELED:
-                        Log.i(TAG, "User chose not to make required location settings changes.");
-//                        mRequestingLocationUpdates = false;
-////                        updateUI();
-//                        startLocationUpdates();
-                        break;
-                }
-                break;
-            case PLACE_AUTOCOMPLETE_REQUEST_CODE:
-
-                if (resultCode == RESULT_OK) {
-                    Place place = PlaceAutocomplete.getPlace(this, data);
-                    destinationName = (String) place.getName();
-                    double destinationLat = place.getLatLng().latitude;
-                    double destinationLng = place.getLatLng().longitude;
-
-                    presenter.saveDestination(destinationLat, destinationLng);
-                    requestClosestStops();
-                    showDestination();
-
-                } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
-                    Status status = PlaceAutocomplete.getStatus(this, data);
-                    // TODO: Handle the error.
-                    Log.i(TAG, status.getStatusMessage());
-
-                } else if (resultCode == RESULT_CANCELED) {
-                    // The user canceled the operation.
-                }
-        }
-    }
-
-
-    private void requestClosestStops() {
-
-        Bundle bundle = new Bundle();
-        presenter.getClosestStops();
-
-        bundle.putStringArrayList("stop_names", closeStopNameList);
-        bundle.putStringArrayList("stop_location", closeStoplocationList);
-        switchBottomFragment(MyFragmentList.SHOW_DIRECTION, bundle);
-    }
-
-    @Override
-    public void changeMapBottomPadding(int padding) {
-        mMapPadding = padding;
-        ValueAnimator animator = ValueAnimator.ofInt(mMapPadding, padding);
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator valueAnimator) {
-                mMap.setPadding(0, 116, 0, (Integer) valueAnimator.getAnimatedValue());
+        if (mDotedPolylines.size() != 0) {
+            for (Polyline polyline : mDotedPolylines) {
+                polyline.remove(); // Remove existing polyline from the map
             }
-        });
+        }
 
-        animator.setDuration(5000);
-        animator.start();
+        for (WalkingPoints path : walkingPoints) {
+
+            String origin = path.getOrigin();
+            double originLat = Double.parseDouble(origin.split(",")[0]);
+            double originLng = Double.parseDouble(origin.split(",")[1]);
+            LatLng originCoordinates = new LatLng(originLat, originLng);
+
+            String destination = path.getDestination();
+            double destiLat = Double.parseDouble(destination.split(",")[0]);
+            double destiLng = Double.parseDouble(destination.split(",")[1]);
+            LatLng destinationCoordinates = new LatLng(destiLat, destiLng);
+
+            PolylineOptions polylineOptions = new PolylineOptions()
+                    .add(originCoordinates)
+                    .add(destinationCoordinates)
+                    .color(Color.BLUE)
+                    .pattern(pattern);
+            mDotedPolylines.add(mMap.addPolyline(polylineOptions));
+
+        }
+
+        Log.d(TAG, "displayWakingPath: ends");
     }
 
+    @Override
+    public void updateNextStopTimeAndDate(long seconds, int distanceMeters) {
 
-    public String getDestinationName() {
-        return destinationName;
-    }
+        if ( mCurrentHeaderFragment instanceof NextStopInfo){
 
+           Double distance = distanceMeters / 1000.0; //convert distance from meters to kilometers
 
-    private void startAnim(List<LatLng> route) {
-        if (mMap != null) {
-            MapAnimator.getInstance().animateRoute(mMap, route);
-        } else {
-            Toast.makeText(getApplicationContext(), "Map not ready", Toast.LENGTH_LONG).show();
+            DayTimeSecondConverter converter  = new DayTimeSecondConverter(seconds);
+            long second = converter.getSeconds();
+            long minute = converter.getMin();
+            long hours = converter.getHour();
+            int day = converter.getDay();
+
+            TextView time = (TextView) findViewById(R.id.tv_info_time);
+            TextView remainingDistance = (TextView) findViewById(R.id.tv_info_distance);
+
+            StringBuilder remainingTime = new StringBuilder();
+
+            if (day != 0) {
+                remainingTime.append(day)
+                        .append("day ");
+            }
+
+            remainingTime.append(hours)
+                    .append("h ")
+                    .append(minute)
+                    .append("min ")
+                    .append(second)
+                    .append("s");
+
+            time.setText(remainingTime.toString());
+            remainingDistance.setText(distance.toString()+"km");
         }
     }
 
-    private void showCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mMap.setMyLocationEnabled(true);
-    }
+    @Override
+    public void updateFinalStopTimeAndDate(long seconds, int distanceMeters) {
 
-    public void startProgressBar(String message) {
+        if ( mCurrentBottomFragment instanceof BottomDistanceTimeFragment){
 
-        mDialog.setMessage(message);
-        mDialog.setCancelable(false);
-        mDialog.setInverseBackgroundForced(false);
+            Double distance = distanceMeters / 1000.0; //convert distance from meters to kilometers
 
-        mDialog.show();
-    }
+            DayTimeSecondConverter converter  = new DayTimeSecondConverter(seconds);
+            long second = converter.getSeconds();
+            long minute = converter.getMin();
+            long hours = converter.getHour();
+            int day = converter.getDay();
 
-    /**
-     * This function stops the progress bar then move the map camera to the destination of the user
-     ***/
-    public void stopProgressBar() {
-        Log.d(TAG, "stopProgressBar: ");
-        mDialog.hide();
+            TextView time = (TextView) findViewById(R.id.tv_final_time);
+            TextView remainingDistance = (TextView) findViewById(R.id.tv_final_distance);
 
-        Log.d(TAG, "stopProgressBar: ends");
-    }
+            StringBuilder remainingTime = new StringBuilder();
 
-    public void showDestination() {
+            if (day != 0) {
+                remainingTime.append(day)
+                        .append("day ");
+            }
 
-        if (mCurrentHeaderFragment instanceof CustomToolBar) {
+            remainingTime.append(hours)
+                    .append("h ")
+                    .append(minute)
+                    .append("min ")
+                    .append(second)
+                    .append("s");
 
-            TextView tv_search = (TextView) findViewById(R.id.tv_search);
-
-            tv_search.setText(destinationName);
-
-            LatLng destination = presenter.getDestination();
-
-            if (mMaker != null)
-                mMaker.remove(); // remove any existing destination marker from the map
-            mMaker = mMap.addMarker(new MarkerOptions() // add a new destination marker to the map
-                    .title(destinationName)
-                    .position(destination));
-
-            moveCameraToLocation(presenter.getDestination());
+            time.setText(remainingTime.toString());
+            remainingDistance.setText(distance.toString()+"km");
         }
     }
 
@@ -846,16 +1127,18 @@ public class MainActivity extends BaseActivity implements
 
         double valueInkillo = distance / 1000;
 
-        int day = (int) TimeUnit.SECONDS.toDays(seconds);
-        long hours = TimeUnit.SECONDS.toHours(seconds) - (day * 24);
-        long minute = TimeUnit.SECONDS.toMinutes(seconds) - (TimeUnit.SECONDS.toHours(seconds) * 60);
-        long second = TimeUnit.SECONDS.toSeconds(seconds) - (TimeUnit.SECONDS.toMinutes(seconds) * 60);
+        DayTimeSecondConverter converter = new DayTimeSecondConverter(seconds);
+
+        int day = converter.getDay();
+        long hours = converter.getHour();
+        long minute = converter.getMin();
+        long second = converter.getSeconds();
 
         StringBuilder remainingTime = new StringBuilder();
 
-        if (day != 0){
+        if (day != 0) {
             remainingTime.append(day)
-                   .append("day ");
+                    .append("day ");
         }
 
         remainingTime.append(hours)
@@ -877,9 +1160,44 @@ public class MainActivity extends BaseActivity implements
             if (viewSwitcher.getCurrentView() == constraintLayout) {
                 viewSwitcher.showNext();
                 start.setVisibility(View.VISIBLE);
-                distanceTextView.setText(valueInkillo+"km");
+                distanceTextView.setText(valueInkillo + "km");
                 arrivalTime.setText(remainingTime.toString());
             }
         }
+    }
+
+    @Override
+    public void showNoRouteDialogue(String message) {
+        Snackbar.make(
+                findViewById(android.R.id.content),
+                message,
+                Snackbar.LENGTH_LONG)
+                .show();
+    }
+
+
+    public String getDestinationName() {
+        return destinationName;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        mGeofencingClient.removeGeofences(getGeofencePendingIntent())
+                .addOnSuccessListener(this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        // Geofences removed
+                        // ...
+                    }
+                })
+                .addOnFailureListener(this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        // Failed to remove geofences
+                        // ...
+                    }
+                });
     }
 }

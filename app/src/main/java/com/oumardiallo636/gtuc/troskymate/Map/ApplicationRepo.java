@@ -2,6 +2,7 @@ package com.oumardiallo636.gtuc.troskymate.Map;
 
 import com.oumardiallo636.gtuc.troskymate.Entities.CloseBusStop.CloseStops;
 import com.oumardiallo636.gtuc.troskymate.Entities.Direction.TroskyDirection;
+import com.oumardiallo636.gtuc.troskymate.Entities.Matrix.TimeDistanceMatrix;
 
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -21,9 +22,9 @@ public interface ApplicationRepo {
         String apiKey ="AIzaSyAVDCXvs610OmEl1ximvN4lB3n-YKBdtmo";
 
         @GET("distancematrix/json")
-        Call<TroskyDirection> getDistanceAndTime(@Query("origin") String origin,
-                                              @Query("destination") String destination,
-                                              @Query("key") String key);
+        Call<TimeDistanceMatrix> getDistanceAndTime(@Query("origins") String origin,
+                                                    @Query("destinations") String destination,
+                                                    @Query("key") String key);
     }
 
     /**
