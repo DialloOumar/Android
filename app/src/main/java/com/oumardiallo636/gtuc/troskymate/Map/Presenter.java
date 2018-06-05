@@ -132,6 +132,16 @@ public class Presenter extends BaseActivity implements
         return  destination.toString();
     }
 
+    public String getStringOrigin(){
+        StringBuilder destination = new StringBuilder();
+
+        destination.append(mCurrentLocation.getLatitude())
+                .append(",")
+                .append(mCurrentLocation.getLongitude());
+
+        return  destination.toString();
+    }
+
     public LatLng getDestination(){
         return mDestination;
     }
@@ -173,6 +183,39 @@ public class Presenter extends BaseActivity implements
     public void provideRoutes(List<List<Route>> routes, List<Stop> stops) {
         Log.d(TAG, "provideRoutes: starts");
 
+        Stop originStop = new Stop();
+        originStop.setBusName("WALKING");
+        originStop.setStopLocation(getStringOrigin());
+        originStop.setStopName("Name");
+//        stops.add(originStop);
+
+        List<Stop> tempStops = new ArrayList<>();
+        tempStops.add(originStop);
+
+        for (Stop stop: stops){
+            tempStops.add(stop);
+        }
+
+//        stops = tempStops;
+
+        List<Stop> filteredStops = new ArrayList<>();
+        boolean isLastStopWalking = false;
+
+        for (Stop stop : tempStops){
+
+            if (stop.getBusName().equalsIgnoreCase("walking")){
+
+                if (!isLastStopWalking){
+                    filteredStops.add(stop);
+                    isLastStopWalking = true;
+                }
+            }else {
+                isLastStopWalking = false;
+                filteredStops.add(stop);
+            }
+        }
+
+
         List<MarkerOptions> markers = new ArrayList<>();
         List<WalkingPoints> walkingPoints = new ArrayList<>();
 
@@ -195,37 +238,45 @@ public class Presenter extends BaseActivity implements
         }
 
         Stop destinationStop = new Stop();
-
-        destinationStop.setBusName("End");
+        destinationStop.setBusName("END");
         destinationStop.setStopLocation(getStringDestination());
         destinationStop.setStopName(mView.getDestinationName());
-        stops.add(destinationStop);
+//        stops.add(destinationStop);
+        filteredStops.add(destinationStop);
 
-        for (int i = 0; i < stops.size(); i++){
 
-            double latitude = Double.parseDouble(stops.get(i).getStopLocation().split(",")[0]);
-            double logitude = Double.parseDouble(stops.get(i).getStopLocation().split(",")[1]);
+//        walkingPoints.add(new WalkingPoints(getStringOrigin(), filteredStops.get(0).getStopLocation()));
 
-            String busName = stops.get(i).getBusName();
-            String stopName = stops.get(i).getStopName();
-            Log.d(TAG, "provideRoutes: "+busName);
+        for (int i = 0; i < filteredStops.size(); i++){
 
-            if (busName.equals("WALKING")){
+            double latitude = Double.parseDouble(filteredStops.get(i).getStopLocation().split(",")[0]);
+            double logitude = Double.parseDouble(filteredStops.get(i).getStopLocation().split(",")[1]);
+
+            String busName = filteredStops.get(i).getBusName();
+            String stopName = filteredStops.get(i).getStopName();
+//            Log.d(TAG, "provideRoutes: "+busName);
+
+            if (busName.equalsIgnoreCase("walking")){
                 Log.d(TAG, "provideRoutes: walking called");
+                Log.d(TAG, "provideRoutes: "+stopName);
 
-                walkingPoints.add(new WalkingPoints(stops.get(i).getStopLocation(),
-                        stops.get(i+1).getStopLocation()));
+                walkingPoints.add(new WalkingPoints(filteredStops.get(i).getStopLocation(),
+                            filteredStops.get(i+1).getStopLocation()));
             }
 
             MarkerOptions options = new MarkerOptions();
             options.title(stopName)
                     .position(new LatLng(latitude,logitude))
-                    .snippet("Transport: "+stops.get(i).getBusName());
+                    .snippet("Transport: "+filteredStops.get(i).getBusName());
             markers.add(options);
         }
 
-//        mView.stopProgressBar();
-        mView.createGeofences(stops);
+
+        //remove the added origin stop and the added origin marker
+        filteredStops.remove(0);
+        markers.remove(0);
+
+        mView.createGeofences(filteredStops);
         mView.drawMarkers(markers);
         mView.displayWakingPath(walkingPoints);
         mView.loadStartFragment(distance, seconds);
@@ -582,7 +633,7 @@ public class Presenter extends BaseActivity implements
 
 
     @Override
-    public void getDistanceAndTime(List<String> origins, List<String> destinations ){
+    public void getDistanceAndTime(List<String> origins, List<String> destinations, String mode ){
 
         Log.d(TAG, "getDistanceAndTime: starts");
 
@@ -604,7 +655,7 @@ public class Presenter extends BaseActivity implements
 
         String destination = destinationBuilder.toString().substring(0, destinationBuilder.length()-1);
 
-        mModel.requestDistanceAndTime(origin, destination);
+        mModel.requestDistanceAndTime(origin, destination, mode);
 
         Log.d(TAG, "getDistanceAndTime: ends");
     }

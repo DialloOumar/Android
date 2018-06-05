@@ -24,6 +24,7 @@ public interface ApplicationRepo {
         @GET("distancematrix/json")
         Call<TimeDistanceMatrix> getDistanceAndTime(@Query("origins") String origin,
                                                     @Query("destinations") String destination,
+                                                    @Query("mode") String mode,
                                                     @Query("key") String key);
     }
 

@@ -24,11 +24,11 @@ public interface MapActivityMVP {
         void updateLocationUI(Location location);
         void searchPlace(android.view.View v);
         void showSnackbar(int textId, int action, android.view.View.OnClickListener listener);
-        void moveCameraToLocation(LatLng location);
+        void moveCameraToLocation(LatLng location, int type);
         void drawMarkers(List<MarkerOptions> markerOptions);
         void switchBottomFragment(String toFragment, Bundle bundle);
         void switchHeaderFragment(String toFragment, Bundle bundle);
-        void loadStartFragment(double distance, int time);
+        void loadStartFragment(Integer distance, int time);
         void saveCloseStops(CloseStops stops);
         void clearMap();
         void showNoRouteDialogue(String message);
@@ -50,7 +50,6 @@ public interface MapActivityMVP {
 
         void updateNextStopTimeAndDate(long second, int distance);
         void updateFinalStopTimeAndDate(long second, int distance);
-
 
     }
 
@@ -75,7 +74,7 @@ public interface MapActivityMVP {
         void getDirection(String origin, String destination);
         void provideClosestStops(CloseStops stops);
         void notifyNoRouteFound(int status);
-        void getDistanceAndTime(List<String> origins, List<String> destinations );
+        void getDistanceAndTime(List<String> origins, List<String> destinations,String mode);
         void provideDistanceAndTime(MatrixInfo nextStop, MatrixInfo lastStop);
 
     }
@@ -84,7 +83,7 @@ public interface MapActivityMVP {
 
         void requestClosestBuses(String origin);
         void requestDirectionApi(String origin, String destination);
-        void requestDistanceAndTime(String origin, String destination);
+        void requestDistanceAndTime(String origin, String destination, String mode);
 
     }
 }

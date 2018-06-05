@@ -65,6 +65,7 @@ public class StartFragment extends Fragment
         MainActivity.getInstance().switchBottomFragment(MyFragmentList.BOTTOM_DISTANCE_TIME_FRAG,
                 null);
         MainActivity.getInstance().startGeofences();
+
     }
 
 }

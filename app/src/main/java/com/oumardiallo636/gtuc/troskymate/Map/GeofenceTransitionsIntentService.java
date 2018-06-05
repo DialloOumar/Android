@@ -82,6 +82,7 @@ public class GeofenceTransitionsIntentService extends IntentService {
             // Send notification and log the transition details.
 //            sendNotification(geofenceTransitionDetails);
 //            Log.i(TAG, geofenceTransitionDetails);
+
         } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT){
 
             List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
@@ -89,25 +90,10 @@ public class GeofenceTransitionsIntentService extends IntentService {
             for (final Geofence geofence: triggeringGeofences){
 
                 Log.d(TAG, "onHandleIntent: In geofence "+geofence.getRequestId());
-
-
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        Toast.makeText(getApplicationContext(), "Exit", Toast.LENGTH_LONG).show();
-                    }
-                });
-
                 MainActivity.getInstance().geofenceResponse(geofence.getRequestId());
 
             }
         }
 
-        else {
-//            // Log the error.
-//            Log.e(TAG, getString(R.string.geofence_transition_invalid_type,
-//                    geofenceTransition));
-        }
     }
 }

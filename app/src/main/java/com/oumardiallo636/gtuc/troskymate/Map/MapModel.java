@@ -151,7 +151,7 @@ public class MapModel implements MapActivityMVP.Model {
     }
 
     @Override
-    public void requestDistanceAndTime(String origin, String destination) {
+    public void requestDistanceAndTime(String origin, String destination, String mode) {
 
         Log.d(TAG, "requestDistanceAndTime: starts");
 
@@ -166,7 +166,7 @@ public class MapModel implements MapActivityMVP.Model {
 
         ApplicationRepo.GoogleRepo googleRepo = retrofit.create(ApplicationRepo.GoogleRepo.class);
 
-        Call<TimeDistanceMatrix> call = googleRepo.getDistanceAndTime(origin,destination,apiKey);
+        Call<TimeDistanceMatrix> call = googleRepo.getDistanceAndTime(origin,destination,mode,apiKey);
 
         call.enqueue(new Callback<TimeDistanceMatrix>() {
             @Override

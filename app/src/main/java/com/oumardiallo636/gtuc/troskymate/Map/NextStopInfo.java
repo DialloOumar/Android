@@ -6,6 +6,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.oumardiallo636.gtuc.troskymate.R;
 
@@ -25,6 +26,14 @@ public class NextStopInfo extends Fragment
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_next_stop_info, container, false);
+
+        String name = getArguments().getString("next_stop_name");
+
+        TextView nextStopName = view.findViewById(R.id.tv_next_stop_name);
+        TextView instruction = view.findViewById(R.id.tv_info);
+
+        instruction.setText(getString(R.string.walk_to));
+        nextStopName.setText(name);
 
         view.post(new Runnable() {
             @Override
