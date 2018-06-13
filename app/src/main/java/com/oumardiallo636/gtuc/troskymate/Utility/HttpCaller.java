@@ -14,8 +14,8 @@ public class HttpCaller {
 
     private HttpCaller(){
         okHttpClient = new OkHttpClient.Builder()
-                .readTimeout(90, TimeUnit.SECONDS)
-                .connectTimeout(90, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .build();
     }
 

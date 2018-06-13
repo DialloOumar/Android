@@ -11,7 +11,9 @@ import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,9 +29,10 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ViewSwitcher;
@@ -41,6 +44,7 @@ import com.akexorcist.googledirection.model.Direction;
 import com.akexorcist.googledirection.model.Leg;
 import com.akexorcist.googledirection.model.Route;
 import com.akexorcist.googledirection.util.DirectionConverter;
+import com.crashlytics.android.Crashlytics;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
@@ -58,6 +62,7 @@ import com.google.android.gms.maps.model.Dot;
 import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PatternItem;
@@ -77,13 +82,12 @@ import com.oumardiallo636.gtuc.troskymate.Utility.MyFragmentList;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.fabric.sdk.android.Fabric;
 
 /**
  * Using location settings.
@@ -112,10 +116,11 @@ public class MainActivity extends BaseActivity implements
     private boolean mCameraOnLocation = true;
 
 
-    private List<List<String>> mPolylineList;
     private List<Polyline> mStraightPolyline = new ArrayList<>();
     private List<Polyline> mDotedPolylines = new ArrayList<>();
-    private Queue<Integer> color = new LinkedList<>();
+
+    private final int polyColor = Color.parseColor("#25864b");
+
 
     private ArrayList<String> closeStopNameList;
     private ArrayList<String> closeStoplocationList;
@@ -132,8 +137,11 @@ public class MainActivity extends BaseActivity implements
     private PendingIntent mGeofencePendingIntent;
     private ArrayList<Stop> mListBusStops;
 
-    private Stop mNextStop;
+
+
     private Stop mCurrentStop;
+    private Stop mNextStop;
+    private Stop mThirdStop;
 
     private Stop mDestinationStop;
 
@@ -162,16 +170,17 @@ public class MainActivity extends BaseActivity implements
     RadioGroup radioGroup;
 
     @BindView(R.id.tv_cancel)
-    TextView cancel;
+    ImageView cancel;
 
     @BindView(R.id.tv_select_origin)
     TextView select_origin;
 
     @BindView(R.id.btn_show_direction)
-    Button btnshowDirection;
+    ImageButton btnshowDirection;
 
     @BindView(R.id.tv_search)
     TextView search;
+
 
     @OnClick(R.id.tv_cancel)
     public void cancelClick() {
@@ -217,14 +226,10 @@ public class MainActivity extends BaseActivity implements
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Fabric.with(this, new Crashlytics());
         setContentView(R.layout.main_activity);
 
-//        color.add(Color.BLUE);
-//        color.add(Color.GREEN);
-//        color.add(Color.RED);
-//        color.add(Color.BLACK);
-
-       vibrator = (Vibrator) this.getSystemService(this.VIBRATOR_SERVICE);
+        vibrator = (Vibrator) this.getSystemService(this.VIBRATOR_SERVICE);
 
 //        ButterKnife.bind(this);
         mView = this;
@@ -273,6 +278,7 @@ public class MainActivity extends BaseActivity implements
      * @return
      */
 
+
     @Override
     public void onResume() {
         super.onResume();
@@ -293,6 +299,7 @@ public class MainActivity extends BaseActivity implements
         super.onPause();
         // Remove location updates to save battery.
         presenter.stopLocationUpdates();
+
     }
 
 
@@ -342,6 +349,7 @@ public class MainActivity extends BaseActivity implements
 
                 } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
                     Status status = PlaceAutocomplete.getStatus(this, data);
+
                     // TODO: Handle the error.
                     Log.i(TAG, status.getStatusMessage());
 
@@ -428,11 +436,10 @@ public class MainActivity extends BaseActivity implements
         }
 //            route.addAll(PolyUtil.decode(p));
         Polyline polyline = mMap.addPolyline(options);
-        polyline.setColor(Color.BLUE);
-        polyline.setWidth(10);
+        polyline.setColor(polyColor);
+        polyline.setWidth(15);
         mStraightPolyline.add(polyline);
     }
-
 
 
     /**
@@ -443,48 +450,73 @@ public class MainActivity extends BaseActivity implements
     public void createGeofences(List<Stop> stops) {
         Log.d(TAG, "createGeofences: starts");
 
+        Stop currentPosition = new Stop();
+
+        currentPosition.setBusName("walking");
+        currentPosition.setStopLocation(presenter.getStringOrigin());
+
+        mCurrentStop = currentPosition;
+
         mGeofenceList = new ArrayList<>();
         mListBusStops = new ArrayList<>();
 
         mNextStop = stops.get(0);
         mListBusStops.addAll(stops);
 
-        mGeofenceList.add(new Geofence.Builder()
-                .setRequestId("1")
-                .setCircularRegion(
-                        5.602911,
-                        -0.236360,
-                        5000
-                )
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                        Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build());
+
+//        mGeofenceList.add(new Geofence.Builder()
+//                .setRequestId("0")
+//                .setCircularRegion(
+//                        5.602867,
+//                        -0.236372,
+//                        80
+//                )
+//                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+//                .setTransitionTypes( Geofence.GEOFENCE_TRANSITION_ENTER)
+//                .build());
 
         for (int i = 0; i < stops.size(); i++) {
 
             double lat = Double.parseDouble(stops.get(i).getStopLocation().split(",")[0]);
             double lng = Double.parseDouble(stops.get(i).getStopLocation().split(",")[1]);
 
+            Log.d(TAG, "createGeofences: " + stops.get(i).getStopName());
+
             mGeofenceList.add(new Geofence.Builder()
-                    .setRequestId(i+"")
-                    .setCircularRegion(lat, lng, 40)
-                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER |
-                            Geofence.GEOFENCE_TRANSITION_EXIT)
+                    .setRequestId(i + "d")
+                    .setCircularRegion(lat, lng, 80)
+                    .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
                     .setExpirationDuration(Geofence.NEVER_EXPIRE)
                     .build());
 
         }
-//
+
         Log.d(TAG, "createGeofences: ends");
     }
 
+
     @Override
-    public void geofenceResponse(final String message) {
+    public void geofenceEnterResponse(final String message) {
 
         Log.d(TAG, "geofenceResponse: starts");
 
-        int currentStopId = Integer.parseInt(message);
+        final int currentStopId = Integer.parseInt(message);
+
+        mCurrentStop = mListBusStops.get(currentStopId);
+
+        if ((currentStopId + 1) < mListBusStops.size()) {
+            mNextStop = mListBusStops.get(currentStopId + 1);
+
+        } else {
+            mNextStop = null;
+        }
+
+        if ((currentStopId + 2) < mListBusStops.size()) {
+            mThirdStop = mListBusStops.get(currentStopId + 2);
+
+        } else {
+            mThirdStop = null;
+        }
 
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
@@ -494,46 +526,149 @@ public class MainActivity extends BaseActivity implements
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     vibrator.vibrate(VibrationEffect.createOneShot(2000, VibrationEffect.DEFAULT_AMPLITUDE));
 
-                }else{
+                } else {
                     //deprecated in API 26
                     vibrator.vibrate(2000);
                 }
+
+                Log.d(TAG, "geofenceEnterResponse: here");
+
+
+                if (currentStopId != 0){
+
+                    if (!mListBusStops.get(currentStopId -1).getBusName().equalsIgnoreCase("walking")){
+
+                        changeNextStopInfo(0);
+                    }
+                }
+
+                Handler handler = new Handler();
+
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d(TAG, "geofenceEnterResponse: In");
+                        changeNextStopInfo(1);
+                    }
+                }, 10000);
+
+                Log.d(TAG, "geofenceEnterResponse: here 2");
             }
         });
 
-        if ( (mCurrentHeaderFragment instanceof NextStopInfo)){
-
-            final TextView directionInfoTV =  findViewById(R.id.tv_info);
-            final TextView stopNameInfoTV = (TextView) findViewById(R.id.tv_next_stop_name);
-            final Stop nextBusStop = mListBusStops.get(currentStopId + 1);
-
-            mCurrentStop = mListBusStops.get(currentStopId);
-            final Stop tempStop = mCurrentStop;
-
-            if ( (currentStopId +1) <= mListBusStops.size() ){
-                mNextStop = mListBusStops.get(currentStopId + 1);
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        Log.d(TAG, "geofenceResponse: got run");
-                        directionInfoTV.setText("YOU HAVE ARRIVED AT ");
-                        stopNameInfoTV.setText(tempStop.getStopName());
-
-                    }
-                });
-
-            }else {
-                mNextStop = null;
-            }
-
-        }
+        removeAGeofence(message);
 
         Log.d(TAG, "geofenceResponse: ends");
     }
 
-    private void changeDirectionIcon(Stop previousStop){
+    private double degreeToRadians(double degree) {
 
+        return degree * Math.PI / 180;
+    }
+
+    private double remainingDistance(double lat1, double lng1, double lat2, double lng2) {
+        double earthRadiusKm = 6371;
+
+        double dLat = degreeToRadians(lat2 - lat1);
+        double dLon = degreeToRadians(lng2 - lng1);
+
+        lat1 = degreeToRadians(lat1);
+        lat2 = degreeToRadians(lat2);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c;
+
+    }
+
+    public void changeNextStopInfo(int type) {
+
+        Log.d(TAG, "changeNextStopInfo: starts");
+
+        if (mCurrentHeaderFragment instanceof NextStopInfo) {
+
+            final TextView instruction = findViewById(R.id.tv_info);
+            final ImageView icon = findViewById(R.id.im_direction_icon);
+            final TextView stopName = findViewById(R.id.tv_next_stop_name);
+            final TextView thenInfo = findViewById(R.id.tv_then);
+
+
+            if (type == 1){
+
+                if (mNextStop != null) {
+
+                    double originLat = presenter.getCurrentLocation().getLatitude();
+                    double originLng = presenter.getCurrentLocation().getLongitude();
+
+                    double destinationLat = Double.parseDouble(mNextStop.getStopLocation().split(",")[0]);
+                    double destinationLng = Double.parseDouble(mNextStop.getStopLocation().split(",")[1]);
+
+
+                    double distance = remainingDistance(originLat, originLng,
+                            destinationLat, destinationLng);
+
+                    Log.d(TAG, "oumardistance: distance = " + distance);
+
+                    if (mCurrentStop.getBusName().equalsIgnoreCase("walking")) {
+
+                        Log.d(TAG, "changeNextStopInfo: " + mCurrentStop.getStopName());
+                        Log.d(TAG, "changeNextStopInfo: " + mCurrentStop.getBusName());
+
+                        instruction.setText("WALK TO");
+                        icon.setImageResource(R.drawable.ic_directions_walk_24dp);
+
+                    } else {
+
+                        icon.setImageResource(R.drawable.ic_directions_bus_24dp);
+                        instruction.setText("TAKE " + mCurrentStop.getBusName() + " TO");
+                    }
+
+                    stopName.setText(mNextStop.getStopName());
+
+                    if (mNextStop.getBusName().equalsIgnoreCase("walking")) {
+
+                        Log.d(TAG, "changeNextStopInfo: 3 stop walk");
+                        Drawable img = getApplicationContext()
+                                .getResources()
+                                .getDrawable(R.drawable.ic_directions_walk_24dp);
+
+                        img.setBounds(0, 0, 60, 60);
+                        thenInfo.setCompoundDrawables(null, null, img, null);
+
+                    } else if (mNextStop.getBusName().equalsIgnoreCase("end")){
+
+                        thenInfo.setVisibility(View.INVISIBLE);
+                    }
+                    else {
+
+                        Log.d(TAG, "changeNextStopInfo: 3 stop bus");
+                        Drawable img = getApplicationContext()
+                                .getResources()
+                                .getDrawable(R.drawable.ic_directions_bus_24dp);
+
+                        img.setBounds(0, 0, 60, 60);
+                        thenInfo.setCompoundDrawables(null, null, img, null);
+                    }
+
+                } else {
+
+                    instruction.setText("CONGRATULATION");
+                    stopName.setText("YOU HAVE ARRIVED");
+                    icon.setVisibility(View.INVISIBLE);
+                    thenInfo.setVisibility(View.INVISIBLE);
+                }
+
+            } else {
+
+                instruction.setText("ALIGHT At");
+                stopName.setText(mCurrentStop.getStopName());
+
+            }
+
+        }
+
+        Log.d(TAG, "changeNextStopInfo: ends");
     }
 
     private PendingIntent getGeofencePendingIntent() {
@@ -593,6 +728,8 @@ public class MainActivity extends BaseActivity implements
     @Override
     public void removeAGeofence(final String message) {
 
+        Log.d(TAG, "removeAGeofence: starts");
+
         List<String> toRemove = new ArrayList<String>();
 
         toRemove.add(message);
@@ -606,7 +743,6 @@ public class MainActivity extends BaseActivity implements
                         new Handler(Looper.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(MainActivity.this, "Exit", Toast.LENGTH_LONG).show();
                                 Toast.makeText(MainActivity.this, message + " removed", Toast.LENGTH_LONG).show();
                             }
                         });
@@ -663,7 +799,6 @@ public class MainActivity extends BaseActivity implements
                     .remove(mCurrentHeaderFragment)
                     .commitAllowingStateLoss();
         }
-
     }
 
     @Override
@@ -704,6 +839,10 @@ public class MainActivity extends BaseActivity implements
                 BottomDistanceTimeFragment fragment = new BottomDistanceTimeFragment();
                 mCurrentBottomFragment = fragment;
 
+                Bundle bundle1 = new Bundle();
+                bundle1.putString("destination_name", mDestinationStop.getStopName());
+                fragment.setArguments(bundle1);
+
                 getSupportFragmentManager().beginTransaction()
                         .setCustomAnimations(R.anim.start_slide_in, R.anim.start_slide_out)
                         .replace(R.id.container_layout, fragment)
@@ -715,7 +854,6 @@ public class MainActivity extends BaseActivity implements
         }
         Log.d(TAG, "switchBottomFragment: ends");
     }
-
 
     @Override
     public void switchHeaderFragment(String toFragment, Bundle bundle) {
@@ -755,7 +893,7 @@ public class MainActivity extends BaseActivity implements
                 LatLng target = new LatLng(presenter.getCurrentLocation().getLatitude(),
                         presenter.getCurrentLocation().getLongitude());
 
-                moveCameraToLocation(target,2);
+                moveCameraToLocation(target, 2);
                 break;
             default:
                 break;
@@ -766,16 +904,30 @@ public class MainActivity extends BaseActivity implements
     /**
      * ********************************** Map Management ************************************
      */
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         Log.d(TAG, "onMapReady: starts");
         mMap = googleMap;
 
+        try {
+            // Customise the styling of the base map using a JSON object defined
+            // in a raw resource file.
+            boolean success = googleMap.setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(
+                            this, R.raw.day_mode));
+
+            if (!success) {
+                Log.e(TAG, "Style parsing failed.");
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.e(TAG, "Can't find style. Error: ", e);
+        }
+
         showCurrentLocation();
         mMap.setBuildingsEnabled(true);
         UiSettings uiSettings = googleMap.getUiSettings();
         uiSettings.setZoomControlsEnabled(true);
+        uiSettings.setCompassEnabled(false);
 
         mMap.setPadding(0, 108, 0, 0);
 
@@ -800,7 +952,7 @@ public class MainActivity extends BaseActivity implements
     public void moveCameraToLocation(LatLng location, int type) {
 
 
-        if (type == 0){
+        if (type == 0) {
 
             CameraPosition cameraPosition = CameraPosition.builder()
                     .target(location)
@@ -810,7 +962,7 @@ public class MainActivity extends BaseActivity implements
             // Animate the change in camera view over 2 seconds
             mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition),
                     2000, null);
-        } else if (type == 1){
+        } else if (type == 1) {
 
             Log.d(TAG, "moveCameraToLocation: called");
 
@@ -822,9 +974,9 @@ public class MainActivity extends BaseActivity implements
 
             LatLngBounds target = new LatLngBounds(origin, destination);
 
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(target.getCenter(),12),2000,null);
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(target.getCenter(), 12), 2000, null);
 
-        } else if (type == 2){
+        } else if (type == 2) {
 
             CameraPosition cameraPosition = new CameraPosition.Builder()
                     .target(new LatLng(presenter.getCurrentLocation().getLatitude(),
@@ -869,6 +1021,8 @@ public class MainActivity extends BaseActivity implements
             search.setText(null);
         }
 
+        hideBottomFragment();
+
         changeMapBottomPadding(0);
     }
 
@@ -876,7 +1030,7 @@ public class MainActivity extends BaseActivity implements
 
         if (mCurrentHeaderFragment instanceof CustomToolBar) {
 
-            TextView tv_search = (TextView) findViewById(R.id.tv_search);
+            TextView tv_search = findViewById(R.id.tv_search);
 
             tv_search.setText(destinationName);
 
@@ -888,7 +1042,7 @@ public class MainActivity extends BaseActivity implements
                     .title(destinationName)
                     .position(destination));
 
-            moveCameraToLocation(presenter.getDestination(),0);
+            moveCameraToLocation(presenter.getDestination(), 0);
         }
     }
 
@@ -914,21 +1068,26 @@ public class MainActivity extends BaseActivity implements
             return;
         }
 
-        if (mNextStop != null && mNextStop.getBusName().equalsIgnoreCase("walking")) {
-            updateNavigationLayout("driving");
-        }else {
+        if (mCurrentStop != null && mCurrentStop.getBusName().equalsIgnoreCase("walking")) {
+
+            updateNavigationLayout("walking");
+
+        } else {
+
             updateNavigationLayout("driving");
         }
+
+//        changeNextStopInfo();
 
         mMap.setMyLocationEnabled(true);
     }
 
-    private void updateNavigationLayout(String mode){
+    private void updateNavigationLayout(String mode) {
 
         Log.d(TAG, "updateNavigationLayout: starts");
 
-        if ( (mCurrentHeaderFragment instanceof NextStopInfo)
-                && (mCurrentBottomFragment instanceof BottomDistanceTimeFragment) ){
+        if ((mCurrentHeaderFragment instanceof NextStopInfo)
+                && (mCurrentBottomFragment instanceof BottomDistanceTimeFragment)) {
 
             List<String> origin = new ArrayList<>();
 
@@ -945,10 +1104,10 @@ public class MainActivity extends BaseActivity implements
 
             List<String> destination = new ArrayList<>();
 
-            if (mNextStop != null){
+            if (mNextStop != null) {
                 destination.add(mNextStop.getStopLocation());
                 destination.add(mDestinationStop.getStopLocation());
-                presenter.getDistanceAndTime(origin,destination, mode);
+                presenter.getDistanceAndTime(origin, destination, mode);
             }
 
 
@@ -958,7 +1117,7 @@ public class MainActivity extends BaseActivity implements
 
     /**
      * ****************************** REQUEST MANAGEMENT **********************************
-     * */
+     */
     private void requestClosestStops() {
 
         Bundle bundle = new Bundle();
@@ -997,7 +1156,7 @@ public class MainActivity extends BaseActivity implements
             ButterKnife.bind(this);
 
             ViewSwitcher switcher = (ViewSwitcher) findViewById(R.id.viewSwitcher);
-            RelativeLayout progressbarContainer = (RelativeLayout) findViewById(R.id.pb_container);
+            ConstraintLayout progressbarContainer = (ConstraintLayout) findViewById(R.id.pb_container);
 
             if (busStops.size() > 0) {
                 stop1.setText(closeStopNameList.get(0));
@@ -1051,7 +1210,7 @@ public class MainActivity extends BaseActivity implements
                         @Override
                         public void onDirectionSuccess(Direction direction, String rawBody) {
                             // Do something here
-                            if (direction.isOK()){
+                            if (direction.isOK()) {
 
                                 Log.d(TAG, "onDirectionSuccess: okk");
                                 Route route = direction.getRouteList().get(0);
@@ -1060,15 +1219,16 @@ public class MainActivity extends BaseActivity implements
 
                                 PolylineOptions polylineOptions = DirectionConverter.createPolyline(MainActivity.this, pointList, 5, Color.BLUE);
                                 polylineOptions.pattern(pattern);
+                                polylineOptions.color(polyColor);
                                 mMap.addPolyline(polylineOptions);
 
                             } else {
 
                                 PolylineOptions polylineOptions = new PolylineOptions()
-                                    .add(originCoordinates)
-                                    .add(destinationCoordinates)
-                                    .color(Color.BLUE)
-                                    .pattern(pattern);
+                                        .add(originCoordinates)
+                                        .add(destinationCoordinates)
+                                        .color(polyColor)
+                                        .pattern(pattern);
                                 mDotedPolylines.add(mMap.addPolyline(polylineOptions));
                             }
                         }
@@ -1095,22 +1255,21 @@ public class MainActivity extends BaseActivity implements
     @Override
     public void updateNextStopTimeAndDate(long seconds, int distanceMeters) {
 
-        if ( mCurrentHeaderFragment instanceof NextStopInfo){
+        if (mCurrentHeaderFragment instanceof NextStopInfo) {
 
             String totalDistance;
 
-            if (distanceMeters > 1000){
+            if (distanceMeters > 1000) {
                 Double distance = distanceMeters / 1000.0;
-                totalDistance = distance.toString()+" km";
-            }else {
+                totalDistance = distance.toString() + " km";
+            } else {
                 Integer distance = distanceMeters;
-                totalDistance = distance.toString()+ " m";
+                totalDistance = distance.toString() + " m";
             }
-             //convert distance from meters to kilometers
+            //convert distance from meters to kilometers
 
 
-
-            DayTimeSecondConverter converter  = new DayTimeSecondConverter(seconds);
+            DayTimeSecondConverter converter = new DayTimeSecondConverter(seconds);
             long second = converter.getSeconds();
             long minute = converter.getMin();
             long hours = converter.getHour();
@@ -1125,12 +1284,12 @@ public class MainActivity extends BaseActivity implements
 
             if (hours != 0) remainingTime.append(hours).append("h ");
 
-            if(minute != 0) remainingTime.append(minute).append("min ");
+            if (minute != 0) remainingTime.append(minute).append("min ");
 
             remainingTime.append(second).append(" s");
 
 
-            if (time != null && remainingDistance !=null){
+            if (time != null && remainingDistance != null) {
                 time.setText(remainingTime.toString());
                 remainingDistance.setText(totalDistance);
             }
@@ -1143,19 +1302,19 @@ public class MainActivity extends BaseActivity implements
 
         Log.d(TAG, "updateFinalStopTimeAndDate: called");
 
-        if ( mCurrentBottomFragment instanceof BottomDistanceTimeFragment){
+        if (mCurrentBottomFragment instanceof BottomDistanceTimeFragment) {
 
             String totalDistance;
 
-            if (distanceMeters > 1000){
+            if (distanceMeters > 1000) {
                 Double distance = distanceMeters / 1000.0;
-                totalDistance = distance.toString()+" km";
-            }else {
+                totalDistance = distance.toString() + " km";
+            } else {
                 Integer distance = distanceMeters;
-                totalDistance = distance.toString()+ " m";
+                totalDistance = distance.toString() + " m";
             }
 
-            DayTimeSecondConverter converter  = new DayTimeSecondConverter(seconds);
+            DayTimeSecondConverter converter = new DayTimeSecondConverter(seconds);
             long second = converter.getSeconds();
             long minute = converter.getMin();
             long hours = converter.getHour();
@@ -1170,12 +1329,12 @@ public class MainActivity extends BaseActivity implements
 
             if (hours != 0) remainingTime.append(hours).append("h ");
 
-            if(minute != 0) remainingTime.append(minute).append("min ");
+            if (minute != 0) remainingTime.append(minute).append("min ");
 
             remainingTime.append(second).append("s");
 
 
-            if (time != null && remainingDistance !=null){
+            if (time != null && remainingDistance != null) {
                 time.setText(remainingTime.toString());
                 remainingDistance.setText(totalDistance);
             }
@@ -1183,21 +1342,20 @@ public class MainActivity extends BaseActivity implements
     }
 
 
-
     @Override
     public void loadStartFragment(Integer distance, int seconds) {
 
         String totalDistance;
 
-        if (distance >= 1000){
+        if (distance >= 1000) {
 
             Double valueInkillo = distance / 1000.0;
 
-            totalDistance = valueInkillo.toString()+ " km";
-        }else {
+            totalDistance = valueInkillo.toString() + " km";
+        } else {
 
             Integer valueInMeters = distance;
-            totalDistance = valueInMeters.toString()+ " m";
+            totalDistance = valueInMeters.toString() + " m";
         }
 
         DayTimeSecondConverter converter = new DayTimeSecondConverter(seconds);
@@ -1213,7 +1371,7 @@ public class MainActivity extends BaseActivity implements
 
         if (hours != 0) remainingTime.append(hours).append("h");
 
-        if(minute != 0) remainingTime.append(minute).append("min");
+        if (minute != 0) remainingTime.append(minute).append(" min ");
 
         remainingTime.append(second).append("s");
 
@@ -1244,7 +1402,6 @@ public class MainActivity extends BaseActivity implements
                 Snackbar.LENGTH_LONG)
                 .show();
     }
-
 
     public String getDestinationName() {
         return destinationName;

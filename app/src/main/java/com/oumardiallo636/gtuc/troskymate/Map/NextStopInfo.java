@@ -10,6 +10,8 @@ import android.widget.TextView;
 
 import com.oumardiallo636.gtuc.troskymate.R;
 
+import butterknife.ButterKnife;
+
 /**
  * A simple {@link Fragment} subclass.
  */
@@ -19,13 +21,27 @@ public class NextStopInfo extends Fragment
     public NextStopInfo() {
         // Required empty public constructor
     }
+//
+//    @BindView(R.id.tv_then)
+//    TextView then;
+//
+//    @OnClick(R.id.tv_then)
+//    public void then() {
+//        Toast.makeText(getContext(),"tab", Toast.LENGTH_LONG).show();
+//        MainActivity.getInstance().changeNextStopInfo();
+//        then.setVisibility(View.INVISIBLE);
+//    }
+
 
     View view;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_next_stop_info, container, false);
+
+        ButterKnife.bind(this,view);
 
         String name = getArguments().getString("next_stop_name");
 

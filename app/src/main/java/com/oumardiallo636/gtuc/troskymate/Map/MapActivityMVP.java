@@ -32,6 +32,7 @@ public interface MapActivityMVP {
         void saveCloseStops(CloseStops stops);
         void clearMap();
         void showNoRouteDialogue(String message);
+        void changeNextStopInfo(int type);
 
         //geofence callbacks
         void createGeofences(List<Stop> stops);
@@ -43,7 +44,7 @@ public interface MapActivityMVP {
         String getDestinationName();
         void drawPolyline (List<String> route);
 
-        void geofenceResponse(String message);
+        void geofenceEnterResponse(String requestId);
 //
 //        void displayWakingPath(List<PolylineOptions> polylineOptions);
         void displayWakingPath(List<WalkingPoints> walkingPoints);

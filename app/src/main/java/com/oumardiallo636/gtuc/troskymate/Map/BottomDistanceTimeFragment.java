@@ -6,9 +6,11 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.oumardiallo636.gtuc.troskymate.R;
 
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
@@ -24,13 +26,19 @@ public class BottomDistanceTimeFragment extends Fragment
 
     View view;
 
+    @BindView(R.id.tv_bottom_destination_name)
+    TextView destination;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         view = inflater.inflate(R.layout.fragment_bottom_distance_time, container, false);
-
         ButterKnife.bind(this, view);
+
+        String destinationName = getArguments().getString("destination_name");
+
+        destination.setText(destinationName);
         view.post(new Runnable() {
             @Override
             public void run() {

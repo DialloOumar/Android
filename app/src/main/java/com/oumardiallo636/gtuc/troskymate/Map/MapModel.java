@@ -70,18 +70,27 @@ public class MapModel implements MapActivityMVP.Model {
                 Log.d(TAG, "onResponse: starts");
                 CloseStops closeStops = response.body();
 
-                Log.d(TAG, "onResponse: message "+closeStops.getMessage());
-                if (closeStops.getStatus() == 202){
-                    presenter.provideClosestStops(closeStops);
-                }else if (closeStops.getStatus() == MyStatus.NO_ROUTE_FOUND){
-                    Log.d(TAG, "onResponse: in"+closeStops.getMessage());
 
+                if (closeStops != null){
+
+                    if (closeStops.getStatus() == 202){
+                        presenter.provideClosestStops(closeStops);
+                    }else if (closeStops.getStatus() == MyStatus.NO_ROUTE_FOUND){
+                        Log.d(TAG, "onResponse: in"+closeStops.getMessage());
+
+                    }
+                }else {
+                    Log.d(TAG, "onResponse: closeStops == null");
+
+                    presenter.notifyNoRouteFound(405);
                 }
+
             }
 
             @Override
             public void onFailure(Call<CloseStops> call, Throwable t) {
-
+                Log.d(TAG, "onResponse: unavailable");
+                presenter.notifyNoRouteFound(404);
             }
         });
 
@@ -208,7 +217,5 @@ public class MapModel implements MapActivityMVP.Model {
         });
 
         Log.d(TAG, "requestDistanceAndTime: ends");
-
     }
-
 }

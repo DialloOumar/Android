@@ -4,58 +4,48 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/frameLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/white"
+    android:layout_height="wrap_content"
+    android:background="@color/colorTextSecondary"
     tools:context=".Map.BottomDistanceTimeFragment"
     tools:layout_editor_absoluteY="25dp">
 
     <!-- TODO: Update blank fragment layout -->
 
     <TextView
-        android:id="@+id/textView16"
+        android:id="@+id/tv_bottom_destination_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="8dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginStart="16dp"
         android:layout_marginTop="8dp"
         android:text="Final Destination"
-        android:textColor="@color/cast_expanded_controller_background_color"
-        app:layout_constraintStart_toStartOf="parent"
+        android:textColor="@color/colorPrimaryText"
+        app:layout_constraintStart_toEndOf="@+id/tv_dis_time_cancel"
         app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/textView17"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="8dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
-        android:text="Arrive in:"
-        android:textColor="@android:color/black"
-        app:layout_constraintStart_toStartOf="@+id/textView16"
-        app:layout_constraintTop_toBottomOf="@+id/textView16" />
 
     <TextView
         android:id="@+id/tv_final_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="8dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="4dp"
         android:text="---"
-        android:textColor="@color/cast_expanded_controller_background_color"
+        android:textColor="@color/colorLightPrimary"
         android:textSize="18sp"
-        app:layout_constraintBaseline_toBaselineOf="@+id/textView17"
-        app:layout_constraintStart_toEndOf="@+id/textView17" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/tv_bottom_destination_name"
+        app:layout_constraintTop_toBottomOf="@+id/tv_bottom_destination_name" />
 
     <TextView
         android:id="@+id/textView19"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Estimate Distance"
-        android:textColor="@android:color/black"
-        app:layout_constraintStart_toStartOf="@+id/textView17"
-        app:layout_constraintTop_toBottomOf="@+id/textView17" />
+        android:layout_marginLeft="8dp"
+        android:layout_marginStart="8dp"
+        android:text="."
+        android:textColor="@color/colorPrimaryText"
+        app:layout_constraintBaseline_toBaselineOf="@+id/tv_final_time"
+        app:layout_constraintStart_toEndOf="@+id/tv_final_time" />
 
     <TextView
         android:id="@+id/tv_final_distance"
@@ -64,38 +54,22 @@
         android:layout_marginLeft="8dp"
         android:layout_marginStart="8dp"
         android:text="---"
-        android:textColor="@color/cast_expanded_controller_background_color"
+        android:textColor="@color/colorPrimaryText"
         android:textSize="18sp"
         app:layout_constraintBaseline_toBaselineOf="@+id/textView19"
         app:layout_constraintStart_toEndOf="@+id/textView19" />
 
-    <Button
+    <ImageView
         android:id="@+id/tv_dis_time_cancel"
         android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:layout_marginLeft="8dp"
-        android:layout_marginStart="8dp"
-        android:background="@android:color/holo_red_dark"
-        android:text="Cancel"
-        android:textColor="@android:color/white"
-        app:layout_constraintBottom_toBottomOf="@+id/tv_final_distance"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.99"
-        app:layout_constraintStart_toEndOf="@+id/tv_final_distance"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/textView21"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
         android:layout_marginLeft="8dp"
-        android:layout_marginRight="8dp"
         android:layout_marginStart="8dp"
-        android:text="Ecobank Lapaz"
-        app:layout_constraintBaseline_toBaselineOf="@+id/textView16"
-        app:layout_constraintEnd_toStartOf="@+id/tv_dis_time_cancel"
-        app:layout_constraintHorizontal_bias="0.01"
-        app:layout_constraintStart_toEndOf="@+id/textView16" />
+        android:layout_marginTop="8dp"
+        android:src="@drawable/cancel"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </android.support.constraint.ConstraintLayout>

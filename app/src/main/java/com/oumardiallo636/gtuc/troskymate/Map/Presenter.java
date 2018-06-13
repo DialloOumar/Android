@@ -110,7 +110,7 @@ public class Presenter extends BaseActivity implements
 
     public Presenter() {
         mView = MainActivity.getInstance();
-        mActivity = (AppCompatActivity) mView;
+        mActivity = (MainActivity) mView;
         mRequestingLocationUpdates = false;
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(mActivity);
         mSettingsClient = LocationServices.getSettingsClient(mActivity);
@@ -306,6 +306,7 @@ public class Presenter extends BaseActivity implements
                 break;
             case MyStatus.TIME_OUT:
                 mView.showNoRouteDialogue("Internet connection time out try again!");
+                mView.clearMap();
         }
 
     }
@@ -444,7 +445,8 @@ public class Presenter extends BaseActivity implements
                         Log.i(TAG, "All location settings are satisfied.");
 
                         //noinspection MissingPermission
-                        if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        Log.d(TAG, "onSuccess: alpha oumar "+ mActivity);
+                        if (ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mActivity, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                             // TODO: Consider calling
                             //    ActivityCompat#requestPermissions
                             // here to request the missing permissions, and then overriding
@@ -523,7 +525,7 @@ public class Presenter extends BaseActivity implements
     @Override
     public void requestPermissions() {
         boolean shouldProvideRationale =
-                ActivityCompat.shouldShowRequestPermissionRationale(this,
+                ActivityCompat.shouldShowRequestPermissionRationale(mActivity,
                         Manifest.permission.ACCESS_FINE_LOCATION);
 
         // Provide an additional rationale to the user. This would happen if the user denied the

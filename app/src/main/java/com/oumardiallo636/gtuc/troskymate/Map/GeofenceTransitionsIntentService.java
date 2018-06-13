@@ -2,10 +2,7 @@ package com.oumardiallo636.gtuc.troskymate.Map;
 
 import android.app.IntentService;
 import android.content.Intent;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
@@ -60,15 +57,15 @@ public class GeofenceTransitionsIntentService extends IntentService {
 
                 Log.d(TAG, "onHandleIntent: In geofence "+geofence.getRequestId());
 
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
+//                new Handler(Looper.getMainLooper()).post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//
+//                        Toast.makeText(getApplicationContext(), "Enter", Toast.LENGTH_LONG).show();
+//                    }
+//                });
 
-                        Toast.makeText(getApplicationContext(), "Enter", Toast.LENGTH_LONG).show();
-                    }
-                });
-
-                MainActivity.getInstance().geofenceResponse(geofence.getRequestId());
+                MainActivity.getInstance().geofenceEnterResponse(geofence.getRequestId());
 
             }
 
@@ -83,17 +80,8 @@ public class GeofenceTransitionsIntentService extends IntentService {
 //            sendNotification(geofenceTransitionDetails);
 //            Log.i(TAG, geofenceTransitionDetails);
 
-        } else if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT){
-
-            List<Geofence> triggeringGeofences = geofencingEvent.getTriggeringGeofences();
-
-            for (final Geofence geofence: triggeringGeofences){
-
-                Log.d(TAG, "onHandleIntent: In geofence "+geofence.getRequestId());
-                MainActivity.getInstance().geofenceResponse(geofence.getRequestId());
-
-            }
         }
+
 
     }
 }
